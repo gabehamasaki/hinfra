@@ -60,5 +60,5 @@ Pra adicionar um worker: acrescente o host em `ansible/inventory/hosts.ini` sob 
 ## Segredos
 
 - Segredos de cluster (tokens de API, etc): **Sealed Secrets** — `kubeseal` local, nunca comitar segredo em texto puro.
-- Segredos de provisionamento (Tailscale authkey): **ansible-vault** — ver `ansible/group_vars/all/vault.yml.example`.
+- Segredos de provisionamento (Tailscale authkey, token do Cloudflare, PAT do repo infra): **ansible-vault** — ver `ansible/group_vars/all/vault.yml.example`. A senha do vault fica em `~/.infra-vault-pass` (fora do git) — guarde uma cópia num gerenciador de senhas, sem ela o `vault.yml` commitado não decifra em outra máquina.
 - **Backup da master key do Sealed Secrets é obrigatório** logo após a instalação — sem ela, um cluster novo/recriado não decifra os SealedSecrets existentes. Ver `platform/sealed-secrets/README.md`.
