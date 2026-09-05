@@ -15,4 +15,8 @@ kubeconfig*.yaml
 
 # Misc
 .DS_Store
-.claude/
+
+# O harness do Claude (CLAUDE.md, skills, permissões) é versionado de propósito -
+# é o que faz qualquer sessão neste repo já saber operar a infra. Só a config
+# pessoal de cada máquina fica de fora.
+.claude/settings.local.json
