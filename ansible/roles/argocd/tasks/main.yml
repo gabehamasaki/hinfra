@@ -35,6 +35,16 @@
       status: "True"
     wait_timeout: 180
 
+- name: Traefik - externalTrafficPolicy Local (senão o IP de origem real chega mascarado e o IPAllowList do middleware não funciona)
+  kubernetes.core.k8s:
+    state: patched
+    kind: Service
+    name: traefik
+    namespace: kube-system
+    definition:
+      spec:
+        externalTrafficPolicy: Local
+
 - name: Aplicar o Middleware Tailscale-only (Traefik só libera argocd.{{ infra_domain }} pra tailnet)
   kubernetes.core.k8s:
     state: present
