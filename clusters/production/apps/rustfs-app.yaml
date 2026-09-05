@@ -31,19 +31,14 @@ spec:
             memory: 128Mi
           limits:
             memory: 256Mi
+        # Ingress/TLS temporariamente desligado: o chart, com tls.enabled=true
+        # e tls.certManager.enabled=false, cria seu próprio Secret com conteúdo
+        # inválido, conflitando com o que o cert-manager escreve - isso gerou
+        # um loop de reemissão que bateu no rate limit do Let's Encrypt (5
+        # certs/semana pro mesmo host). Reativar só depois de 2026-09-06 ~16:12
+        # UTC, com `ingress.tls.certManager.enabled: true` adicionado.
         ingress:
-          enabled: true
-          className: traefik
-          annotations:
-            cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-            traefik.ingress.kubernetes.io/router.middlewares: "argocd-argocd-tailnet-only@kubernetescrd"
-          hosts:
-            - host: s3.hamasakis.cloud
-              paths:
-                - path: /
-                  pathType: Prefix
-          tls:
-            enabled: true
+          enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: rustfs
