@@ -22,6 +22,14 @@ apps/
   <projeto>/          manifests do projeto (deployment/service/ingress/kustomization)
 ```
 
+## Preparar sua máquina local
+
+```bash
+./scripts/setup-local-tools.sh   # instala ansible, gh, tailscale, kubeseal
+gh auth login
+sudo tailscale up
+```
+
 ## Acesso
 
 - SSH: `ssh vps` (usuário `deploy`, root desabilitado). Ver `ansible/bootstrap.yml`.
