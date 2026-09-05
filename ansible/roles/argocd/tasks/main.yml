@@ -57,13 +57,14 @@
     namespace: "{{ argocd_namespace }}"
   register: argocd_admin_secret
 
-- name: Mostrar a senha admin inicial (troque-a e depois delete o secret - ver README)
+- name: Mostrar a senha admin inicial (só existe no primeiro install - troque-a e delete o secret)
   ansible.builtin.debug:
     msg: >
       Senha admin inicial do ArgoCD:
       {{ argocd_admin_secret.resources[0].data.password | b64decode }}
       -- troque com `argocd account update-password` e depois rode:
       kubectl -n {{ argocd_namespace }} delete secret argocd-initial-admin-secret
+  when: argocd_admin_secret.resources | length > 0
 
 - name: Credencial do ArgoCD pro repo infra (privado - precisa de PAT pra clonar)
   kubernetes.core.k8s:

@@ -8,7 +8,8 @@ notifications:
   enabled: false
 
 applicationSet:
-  enabled: false
+  # Este chart não tem mais toggle "enabled" - só dá pra zerar via replicas.
+  replicas: 0
 
 configs:
   params:
