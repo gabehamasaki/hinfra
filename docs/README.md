@@ -16,7 +16,7 @@ Para um resumo visual de tudo, abra [`overview.html`](overview.html) no navegado
 | [06 - TLS e Ingress](06-tls-e-ingress.md) | cert-manager, Let's Encrypt DNS-01, Traefik, restrição por tailnet |
 | [07 - ArgoCD e GitOps](07-argocd-gitops.md) | App of Apps, divisão Ansible × ArgoCD, acesso |
 | [08 - Serviços de dados](08-data-services.md) | Postgres, Valkey, RustFS, KEDA |
-| [09 - CI/CD](09-cicd.md) | GitHub Actions, GHCR, onboarding de projeto novo |
+| [09 - CI/CD](09-cicd.md) | GitHub Actions, GHCR, onboarding de projeto novo (single e monorepo) |
 | [10 - Runbooks](10-runbooks.md) | Operações do dia a dia, passo a passo |
 | [11 - Armadilhas](11-armadilhas.md) | Problemas reais já enfrentados e como foram resolvidos |
 | [12 - MCP](12-mcp.md) | Servidor MCP local para deploy, diagnóstico e scaffold a partir de qualquer repo de projeto |

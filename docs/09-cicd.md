@@ -99,6 +99,38 @@ Detalhes:
 - **`git diff --cached --quiet && exit 0`** evita commit vazio quando o SHA não mudou.
 - A imagem recebe **duas tags**: o SHA (imutável, é o que o manifesto referencia) e `latest` (conveniência para `docker pull` manual). O deploy sempre usa o SHA — `latest` num manifesto de Kubernetes torna impossível saber o que está rodando.
 
+### Monorepo (api + web)
+
+Para projetos com várias imagens no mesmo repo, use o template [`deploy-workflow-monorepo-template.yml`](deploy-workflow-monorepo-template.yml). Convenção: Dockerfiles em `./api` e `./web`, imagens `gabehamasaki/<app>-api` e `gabehamasaki/<app>-web`.
+
+Binding explícito no repo do projeto via `hinfra.yml`:
+
+```yaml
+app: my-app
+host: my-app.hamasakis.dev
+exposure: public
+appPath: apps/my-app
+namespace: my-app
+images:
+  api: gabehamasaki/my-app-api
+  web: gabehamasaki/my-app-web
+routing:
+  apiPath: /api
+  webPath: /
+```
+
+O `kustomization.yaml` no repo infra precisa listar **todas** as imagens que o CI atualiza:
+
+```yaml
+images:
+  - name: ghcr.io/gabehamasaki/my-app-api
+    newTag: latest
+  - name: ghcr.io/gabehamasaki/my-app-web
+    newTag: latest
+```
+
+O `scaffold_workflow` do MCP escolhe o template certo automaticamente quando `hinfra.yml` tem bloco `images`. O `deploy_status` exige que cada imagem esteja rodando com o SHA do deploy.
+
 ## Onboarding de um projeto novo
 
 ### 1. Manifestos no repo infra
@@ -189,8 +221,9 @@ Se for administrativo, aponte para `100.86.241.1` (tailnet) em vez do IP públic
 
 ### 4. No repositório do projeto
 
-- `Dockerfile`
-- `.github/workflows/deploy.yml` (a partir do template, com `IMAGE_NAME` e `APP_PATH` ajustados)
+- `Dockerfile` (ou `api/Dockerfile` + `web/Dockerfile` em monorepos)
+- `.github/workflows/deploy.yml` — template single em [`deploy-workflow-template.yml`](deploy-workflow-template.yml) ou monorepo em [`deploy-workflow-monorepo-template.yml`](deploy-workflow-monorepo-template.yml)
+- `hinfra.yml` (recomendado em monorepos e forks) — ver [12 - MCP](12-mcp.md)
 - Secret `INFRA_REPO_TOKEN`:
 
 ```bash

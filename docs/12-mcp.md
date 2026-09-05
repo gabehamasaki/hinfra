@@ -42,15 +42,34 @@ Se as pistas discordarem, a ferramenta **não adivinha** — pede confirmação 
 
 ### `hinfra.yml` (opcional)
 
+Formato simples (um serviço):
+
 ```yaml
 app: my-portfolio
 image: gabehamasaki/my-portfolio
 appPath: apps/my-portfolio
+namespace: my-portfolio
 host: hamasakis.dev
 exposure: public   # ou tailnet
 ```
 
-Útil para forks, monorepos ou nomes de imagem que não seguem o basename do repo. O `scaffold_workflow` com `write: true` pode gerar este arquivo junto com o workflow.
+Formato monorepo (várias imagens, ex. api + web):
+
+```yaml
+app: my-app
+host: my-app.hamasakis.dev
+exposure: public
+appPath: apps/my-app
+namespace: my-app
+images:
+  api: gabehamasaki/my-app-api
+  web: gabehamasaki/my-app-web
+routing:
+  apiPath: /api
+  webPath: /
+```
+
+Útil para forks, monorepos ou nomes de imagem que não seguem o basename do repo. O campo `image` (singular) continua válido para projetos de imagem única. O `scaffold_workflow` com `write: true` pode gerar este arquivo junto com o workflow.
 
 ## Ferramentas (9)
 
@@ -76,7 +95,7 @@ exposure: public   # ou tailnet
 | Ferramenta | O que faz |
 | --- | --- |
 | `scaffold_app` | Gera manifestos no repo infra (`write: false` por padrão) |
-| `scaffold_workflow` | Gera workflow + `hinfra.yml` no repo do projeto |
+| `scaffold_workflow` | Gera workflow + `hinfra.yml` no repo do projeto (template single ou monorepo conforme `hinfra.yml`) |
 
 `scaffold_app` e `scaffold_workflow` nunca sobrescrevem arquivos existentes — mostram diff.
 
