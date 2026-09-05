@@ -3,6 +3,7 @@
 ansible/group_vars/all/vault.yml
 !ansible/group_vars/all/vault.yml.example
 ansible/.secrets/          # chaves SSH privadas geradas pelo bootstrap.yml - NUNCA commitar
+.secrets/
 
 # Local kubeconfigs pulled from the server
 *.kubeconfig

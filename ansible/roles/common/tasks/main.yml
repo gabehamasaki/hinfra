@@ -13,6 +13,9 @@
       - curl
       - git
       - ca-certificates
+      - python3-kubernetes
+      - python3-yaml
+      - python3-jsonpatch
     state: present
 
 - name: UFW - política padrão (deny incoming, allow outgoing)

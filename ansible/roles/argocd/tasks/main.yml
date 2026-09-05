@@ -55,7 +55,13 @@
       -- troque com `argocd account update-password` e depois rode:
       kubectl -n {{ argocd_namespace }} delete secret argocd-initial-admin-secret
 
+- name: Copiar a Application raiz (App of Apps) pro servidor
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../clusters/production/root-app.yaml"
+    dest: /tmp/root-app.yaml
+    mode: "0600"
+
 - name: Aplicar a Application raiz (App of Apps)
   kubernetes.core.k8s:
     state: present
-    src: "{{ playbook_dir }}/../clusters/production/root-app.yaml"
+    src: /tmp/root-app.yaml

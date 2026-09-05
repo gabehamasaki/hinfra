@@ -4,7 +4,7 @@
 - name: Adicionar repo Helm do Sealed Secrets
   kubernetes.core.helm_repository:
     name: sealed-secrets
-    repo_url: https://bitnami-labs.github.io/sealed-secrets
+    repo_url: https://bitnami.github.io/sealed-secrets
 
 - name: Instalar/atualizar Sealed Secrets controller
   kubernetes.core.helm:

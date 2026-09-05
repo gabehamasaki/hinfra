@@ -19,15 +19,23 @@
     - net.ipv4.ip_forward
     - net.ipv6.conf.all.forwarding
 
-- name: Entrar na tailnet
+- name: Checar status atual do Tailscale
+  ansible.builtin.command: tailscale status --json
+  register: tailscale_status_raw
+  changed_when: false
+  failed_when: false
+
+- name: Entrar na tailnet (só se ainda não estiver logado)
   ansible.builtin.command: >
     tailscale up
+    --reset
     --authkey={{ vault_tailscale_authkey }}
     --hostname={{ tailscale_hostname }}
     --advertise-tags={{ tailscale_tags }}
     --ssh=false
-  args:
-    creates: /var/lib/tailscale/tailscaled.state
+  when: >
+    tailscale_status_raw.rc != 0
+    or (tailscale_status_raw.stdout | from_json).BackendState != "Running"
 
 - name: Obter IP tailscale deste host
   ansible.builtin.command: tailscale ip -4

@@ -20,7 +20,7 @@
   failed_when: false
 
 - name: Esperar o node ficar Ready
-  ansible.builtin.command: k3s kubectl get node {{ inventory_hostname }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  ansible.builtin.command: k3s kubectl get node {{ ansible_hostname }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
   register: node_ready
   until: node_ready.stdout == "True"
   retries: 12

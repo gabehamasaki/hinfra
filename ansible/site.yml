@@ -29,6 +29,15 @@
   become: true
   environment:
     KUBECONFIG: "{{ k3s_kubeconfig }}"
+  pre_tasks:
+    - name: Instalar Helm (necessário pros roles de plataforma)
+      ansible.builtin.shell: |
+        set -e
+        if ! command -v helm >/dev/null 2>&1; then
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        fi
+      args:
+        creates: /usr/local/bin/helm
   roles:
     - sealed_secrets
     - cert_manager

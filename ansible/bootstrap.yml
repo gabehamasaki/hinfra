@@ -36,10 +36,10 @@
         state: present
         key: "{{ lookup('file', deploy_pubkey_path) }}"
 
-    - name: Sudoers do deploy (pede senha por padrão)
+    - name: Sudoers do deploy (NOPASSWD - necessário pra automação não-interativa do Ansible)
       ansible.builtin.copy:
         dest: /etc/sudoers.d/90-deploy
-        content: "{{ deploy_user }} ALL=(ALL) ALL\n"
+        content: "{{ deploy_user }} ALL=(ALL) NOPASSWD:ALL\n"
         mode: "0440"
         validate: "visudo -cf %s"
 
