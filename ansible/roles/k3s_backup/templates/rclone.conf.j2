@@ -9,3 +9,7 @@ access_key_id = {{ vault_r2_access_key_id }}
 secret_access_key = {{ vault_r2_secret_access_key }}
 acl = private
 no_check_bucket = true
+; O R2 não implementa `versionId`, que o rclone usa no HEAD de leitura-de-volta
+; logo após o PUT - o upload dá certo e só essa confirmação retorna 501. O
+; script faz a verificação por conta própria com `rclone lsf` depois do copy.
+no_head = true

@@ -83,9 +83,43 @@ ssh vps 'ls -la /var/backups/k3s/'                             # listar
 ssh vps 'sudo systemctl list-timers k3s-backup.timer'          # conferir o agendamento
 ```
 
-### Limitação atual
+### Cópia offsite no Cloudflare R2
 
-Os backups ficam **na própria VPS**. Isso protege contra corrupção do banco ou remoção acidental, mas não contra perda da máquina inteira. Levar as cópias para fora é o próximo passo natural — e o RustFS, já rodando no cluster, é o destino óbvio assim que estiver em uso.
+Backup que mora só na máquina que ele restaura não é backup. Depois do dump local, o script envia o arquivo para o R2 via `rclone`:
+
+```
+r2:infra-backups/k3s/<hostname>/state-<timestamp>.db.gz
+```
+
+| | Local | R2 |
+| --- | --- | --- |
+| Retenção | 7 dias | 30 dias |
+| Serve para | Corrupção do banco, remoção acidental | Perda da VPS inteira |
+
+O envio **só é configurado se houver credenciais do R2 no vault** (`vault_r2_access_key_id`). Sem elas o role instala apenas a parte local — o que mantém o repositório capaz de provisionar uma VPS nova antes de existir qualquer credencial.
+
+Falha no envio derruba o script de propósito (`set -e`). Um backup remoto que falha em silêncio por meses é pior que não ter nenhum, porque você acha que tem. A falha aparece em `systemctl status k3s-backup`.
+
+Depois do `copy`, o script confirma com `rclone lsf` que o objeto existe do outro lado, em vez de confiar apenas no código de saída.
+
+> **Por que não o RustFS.** Seria a escolha aparente — object storage S3 já rodando no cluster. Mas o RustFS roda **neste node, neste disco**: no cenário em que o backup importa (a VPS morreu), ele morreu junto. Só passa a ser destino válido quando houver workers, com os dados distribuídos entre máquinas.
+
+#### Configuração do rclone
+
+O R2 não implementa o parâmetro `versionId`, que o rclone usa no HEAD de leitura-de-volta logo após o PUT. O upload funciona e só essa confirmação retorna `501 NotImplemented` — o que aparece como erro na primeira tentativa e sucesso no retry. `no_head = true` desliga essa leitura:
+
+```ini
+[r2]
+type = s3
+provider = Cloudflare
+region = auto
+endpoint = https://<account_id>.r2.cloudflarestorage.com
+acl = private
+no_check_bucket = true
+no_head = true
+```
+
+O token do R2 tem escopo **Object Read & Write apenas no bucket `infra-backups`**. Ele não lê configuração de bucket — daí o aviso `Failed to read versioning status` em operações como `purge`, que é inofensivo e é o comportamento correto de menor privilégio.
 
 ## Adicionar um worker
 

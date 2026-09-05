@@ -115,8 +115,20 @@ Console web em `https://s3.hamasakis.cloud` (só tailnet), ou via API S3 de dent
 
 ```bash
 ssh vps 'sudo /usr/local/bin/k3s-backup.sh'                     # sob demanda
-ssh vps 'ls -la /var/backups/k3s/'                              # listar
+ssh vps 'ls -la /var/backups/k3s/'                              # local (7 dias)
 ssh vps 'sudo systemctl list-timers k3s-backup.timer'           # agendamento
+ssh vps 'sudo systemctl status k3s-backup'                      # falhas do último run
+
+# cópia offsite no R2 (30 dias)
+ssh vps 'sudo rclone --config /etc/k3s-backup/rclone.conf ls r2:infra-backups/k3s/srv1957194/'
+```
+
+Baixar um backup do R2 para a máquina local:
+
+```bash
+ssh vps 'sudo rclone --config /etc/k3s-backup/rclone.conf copy \
+  r2:infra-backups/k3s/srv1957194/state-<timestamp>.db.gz /tmp/'
+scp vps:/tmp/state-<timestamp>.db.gz .
 ```
 
 ## Restaurar o datastore do k3s
