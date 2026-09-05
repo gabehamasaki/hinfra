@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://charts.rustfs.com
     chart: rustfs
-    targetRevision: "*"
+    targetRevision: "1.0.0-rc.5"
     helm:
       values: |
         mode:

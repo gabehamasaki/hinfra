@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://valkey.io/valkey-helm/
     chart: valkey
-    targetRevision: "*"
+    targetRevision: "0.12.0"
     helm:
       values: |
         auth:
