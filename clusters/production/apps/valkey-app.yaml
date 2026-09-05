@@ -17,6 +17,9 @@ spec:
         auth:
           enabled: true
           usersExistingSecret: valkey-auth
+          aclUsers:
+            default:
+              permissions: "~* &* +@all"
         dataStorage:
           enabled: true
           requestedSize: 512Mi
