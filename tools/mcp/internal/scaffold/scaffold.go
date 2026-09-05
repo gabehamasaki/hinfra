@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	appctx "github.com/gabehamasaki/infra/tools/mcp/internal/context"
+	"gopkg.in/yaml.v3"
 )
 
 type AppParams struct {
@@ -27,13 +28,52 @@ type WorkflowParams struct {
 	AppPath   string
 }
 
+type MonorepoWorkflowParams struct {
+	AppPath string
+	Images  map[string]string
+}
+
+const (
+	workflowPlaceholderAppPath = "apps/CHANGE-ME"
+	workflowPlaceholderImage   = "gabehamasaki/CHANGE-ME"
+	workflowPlaceholderAPI     = "gabehamasaki/CHANGE-ME-api"
+	workflowPlaceholderWeb     = "gabehamasaki/CHANGE-ME-web"
+)
+
+func WorkflowTemplateName(monorepo bool) string {
+	if monorepo {
+		return "deploy-workflow-monorepo-template.yml"
+	}
+	return "deploy-workflow-template.yml"
+}
+
+func RenderWorkflow(templateContent string, p WorkflowParams) string {
+	out := templateContent
+	out = strings.ReplaceAll(out, workflowPlaceholderImage, p.ImageName)
+	out = strings.ReplaceAll(out, workflowPlaceholderAppPath, p.AppPath)
+	return out
+}
+
+func RenderMonorepoWorkflow(templateContent string, p MonorepoWorkflowParams) string {
+	out := strings.ReplaceAll(templateContent, workflowPlaceholderAppPath, p.AppPath)
+	if api, ok := p.Images["api"]; ok {
+		out = strings.ReplaceAll(out, workflowPlaceholderAPI, api)
+	}
+	if web, ok := p.Images["web"]; ok {
+		out = strings.ReplaceAll(out, workflowPlaceholderWeb, web)
+	}
+	return out
+}
+
 type HinfraParams struct {
 	App       string
 	Image     string
+	Images    map[string]string
 	AppPath   string
 	Namespace string
 	Host      string
 	Exposure  string
+	Routing   *appctx.HinfraRouting
 }
 
 func RenderAppFiles(p AppParams) (map[string]string, error) {
@@ -69,35 +109,39 @@ func defaults(p *AppParams) {
 	}
 }
 
-func RenderWorkflow(templateContent string, p WorkflowParams) string {
-	out := templateContent
-	out = strings.ReplaceAll(out, "gabehamasaki/CHANGE-ME", p.ImageName)
-	out = strings.ReplaceAll(out, "apps/CHANGE-ME", p.AppPath)
-	return out
-}
-
 func RenderHinfra(p HinfraParams) string {
-	var b strings.Builder
-	b.WriteString("# hinfra.yml — binding explícito projeto ↔ infra\n")
+	fields := map[string]interface{}{}
 	if p.App != "" {
-		b.WriteString("app: " + p.App + "\n")
-	}
-	if p.Image != "" {
-		b.WriteString("image: " + p.Image + "\n")
+		fields["app"] = p.App
 	}
 	if p.AppPath != "" {
-		b.WriteString("appPath: " + p.AppPath + "\n")
+		fields["appPath"] = p.AppPath
 	}
 	if p.Namespace != "" {
-		b.WriteString("namespace: " + p.Namespace + "\n")
+		fields["namespace"] = p.Namespace
 	}
 	if p.Host != "" {
-		b.WriteString("host: " + p.Host + "\n")
+		fields["host"] = p.Host
 	}
 	if p.Exposure != "" {
-		b.WriteString("exposure: " + p.Exposure + "\n")
+		fields["exposure"] = p.Exposure
 	}
-	return b.String()
+	if len(p.Images) > 0 {
+		fields["images"] = p.Images
+		if p.Routing != nil {
+			fields["routing"] = p.Routing
+		}
+	} else if p.Image != "" {
+		fields["image"] = p.Image
+	}
+	var buf bytes.Buffer
+	buf.WriteString("# hinfra.yml — binding explícito projeto ↔ infra\n")
+	data, err := yaml.Marshal(fields)
+	if err != nil {
+		return buf.String()
+	}
+	buf.Write(data)
+	return buf.String()
 }
 
 func WriteFiles(baseDir string, files map[string]string, write bool) (string, error) {

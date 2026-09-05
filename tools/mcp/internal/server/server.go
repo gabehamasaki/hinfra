@@ -90,21 +90,14 @@ func deployStatusHandler(env *Env) func(context.Context, *mcp.CallToolRequest, d
 		if err != nil {
 			return nil, deployStatusOutput{Step: 4, OK: false, Detail: err.Error(), SHA: sha}, nil
 		}
-		running := false
+		podImages := make([]string, 0, len(pods))
 		for _, p := range pods {
-			if strings.Contains(p.Image, sha) {
-				running = true
-				break
-			}
+			podImages = append(podImages, p.Image)
 		}
-		if !running {
-			images := make([]string, 0, len(pods))
-			for _, p := range pods {
-				images = append(images, p.Image)
-			}
+		if !appctx.ImagesDeployed(podImages, app.AllImageRefs(), sha) {
 			return nil, deployStatusOutput{
 				Step: 4, OK: false, SHA: sha,
-				Detail: fmt.Sprintf("pod não roda imagem com SHA %s; imagens atuais: %v", sha, images),
+				Detail: fmt.Sprintf("pod(s) não rodam todas as imagens com SHA %s; imagens atuais: %v; esperadas: %v", sha, podImages, app.AllImageRefs()),
 			}, nil
 		}
 		return nil, deployStatusOutput{Step: 4, OK: true, Detail: "deploy completo", SHA: sha}, nil
@@ -320,15 +313,17 @@ func rollbackHandler(env *Env) func(context.Context, *mcp.CallToolRequest, rollb
 			return nil, rollbackOutput{Preview: preview + " — passe confirm:true para executar"}, nil
 		}
 		appDir := filepath.Join(app.InfraRepo, app.AppPath)
-		cmd := exec.Command("kustomize", "edit", "set", "image", app.ImageRef+"="+app.ImageRef+":"+prevTag)
-		cmd.Dir = appDir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return nil, rollbackOutput{}, fmt.Errorf("kustomize: %s: %w", out, err)
+		for _, ref := range app.AllImageRefs() {
+			cmd := exec.Command("kustomize", "edit", "set", "image", ref+"="+ref+":"+prevTag)
+			cmd.Dir = appDir
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return nil, rollbackOutput{}, fmt.Errorf("kustomize (%s): %s: %w", ref, out, err)
+			}
 		}
 		if err := runner.Add(app.AppPath+"/kustomization.yaml"); err != nil {
 			return nil, rollbackOutput{}, err
 		}
-		msg := fmt.Sprintf("rollback: %s@%s", app.Image, prevTag)
+		msg := fmt.Sprintf("rollback: %v@%s", app.AllImageRepos(), prevTag)
 		if err := runner.Commit(msg); err != nil {
 			return nil, rollbackOutput{}, err
 		}
@@ -429,18 +424,26 @@ func scaffoldWorkflowHandler(env *Env) func(context.Context, *mcp.CallToolReques
 		if err != nil {
 			return nil, scaffoldWorkflowOutput{}, err
 		}
-		tmplPath := filepath.Join(env.Runtime.InfraRepo, "docs", "deploy-workflow-template.yml")
+		tmplPath := filepath.Join(env.Runtime.InfraRepo, "docs", scaffold.WorkflowTemplateName(app.IsMonorepo()))
 		tmplBytes, err := os.ReadFile(tmplPath)
 		if err != nil {
 			return nil, scaffoldWorkflowOutput{}, err
 		}
-		workflow := scaffold.RenderWorkflow(string(tmplBytes), scaffold.WorkflowParams{
-			ImageName: app.Image,
-			AppPath:   app.AppPath,
-		})
+		var workflow string
+		if app.IsMonorepo() {
+			workflow = scaffold.RenderMonorepoWorkflow(string(tmplBytes), scaffold.MonorepoWorkflowParams{
+				AppPath: app.AppPath,
+				Images:  app.Images,
+			})
+		} else {
+			workflow = scaffold.RenderWorkflow(string(tmplBytes), scaffold.WorkflowParams{
+				ImageName: app.Image,
+				AppPath:   app.AppPath,
+			})
+		}
 		hinfra := scaffold.RenderHinfra(scaffold.HinfraParams{
-			App: app.Name, Image: app.Image, AppPath: app.AppPath,
-			Namespace: app.Namespace, Host: app.Host, Exposure: app.Exposure,
+			App: app.Name, Image: app.Image, Images: app.Images, Routing: app.Routing,
+			AppPath: app.AppPath, Namespace: app.Namespace, Host: app.Host, Exposure: app.Exposure,
 		})
 		checklist := buildChecklist(app)
 		if !in.Write {
@@ -460,11 +463,22 @@ func scaffoldWorkflowHandler(env *Env) func(context.Context, *mcp.CallToolReques
 
 func buildChecklist(app *appctx.AppContext) []string {
 	items := []string{}
-	dockerfile := filepath.Join(app.ProjectRepo, "Dockerfile")
-	if _, err := os.Stat(dockerfile); err != nil {
-		items = append(items, "Dockerfile ausente na raiz do projeto")
+	if app.IsMonorepo() {
+		for _, component := range []string{"api", "web"} {
+			dockerfile := filepath.Join(app.ProjectRepo, component, "Dockerfile")
+			if _, err := os.Stat(dockerfile); err != nil {
+				items = append(items, fmt.Sprintf("%s/Dockerfile ausente", component))
+			} else {
+				items = append(items, fmt.Sprintf("%s/Dockerfile presente", component))
+			}
+		}
 	} else {
-		items = append(items, "Dockerfile presente")
+		dockerfile := filepath.Join(app.ProjectRepo, "Dockerfile")
+		if _, err := os.Stat(dockerfile); err != nil {
+			items = append(items, "Dockerfile ausente na raiz do projeto")
+		} else {
+			items = append(items, "Dockerfile presente")
+		}
 	}
 	kust := filepath.Join(app.InfraRepo, app.AppPath, "kustomization.yaml")
 	if _, err := os.Stat(kust); err != nil {

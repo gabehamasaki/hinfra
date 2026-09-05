@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/gabehamasaki/infra/tools/mcp/internal/git"
@@ -59,12 +60,8 @@ func (r *Resolver) Resolve(cwd string, appOverride string) (*AppContext, error) 
 		appName = repoName
 	}
 
-	imageName := ""
-	if hinfra != nil && hinfra.Image != "" {
-		imageName = hinfra.Image
-	} else {
-		imageName = owner + "/" + repoName
-	}
+	images, legacyImage := resolveImages(hinfra, owner, repoName)
+	imageName := primaryImage(images, legacyImage)
 
 	appPath := "apps/" + appName
 	if hinfra != nil && hinfra.AppPath != "" {
@@ -77,22 +74,24 @@ func (r *Resolver) Resolve(cwd string, appOverride string) (*AppContext, error) 
 	}
 
 	kustomPath := filepath.Join(r.InfraRepo, appPath, "kustomization.yaml")
-	kustImage, kustErr := parseKustomizationImage(kustomPath)
+	kustImages, kustErr := parseKustomizationImages(kustomPath)
 
 	if appOverride == "" {
-		if err := validateClues(appName, imageName, appPath, repoName, owner, kustImage, kustErr, hinfra != nil); err != nil {
+		if err := validateClues(appName, images, legacyImage, appPath, repoName, owner, kustImages, kustErr, hinfra != nil); err != nil {
 			return nil, err
 		}
 	}
 
 	host := ""
 	exposure := ""
+	var routing *HinfraRouting
 	if hinfra != nil {
 		host = hinfra.Host
 		exposure = hinfra.Exposure
+		routing = hinfra.Routing
 	}
 
-	return &AppContext{
+	ctx := &AppContext{
 		Name:        appName,
 		Namespace:   namespace,
 		InfraRepo:   r.InfraRepo,
@@ -103,7 +102,23 @@ func (r *Resolver) Resolve(cwd string, appOverride string) (*AppContext, error) 
 		Kubeconfig:  r.Kubeconfig,
 		Host:        host,
 		Exposure:    exposure,
-	}, nil
+		Routing:     routing,
+	}
+	if len(images) > 0 {
+		ctx.Images = images
+	}
+	return ctx, nil
+}
+
+func resolveImages(hinfra *HinfraConfig, owner, repoName string) (map[string]string, string) {
+	if hinfra != nil && len(hinfra.Images) > 0 {
+		return hinfra.Images, ""
+	}
+	single := owner + "/" + repoName
+	if hinfra != nil && hinfra.Image != "" {
+		single = hinfra.Image
+	}
+	return nil, single
 }
 
 func mustOrigin(runner *git.Runner) string {
@@ -138,33 +153,44 @@ type kustomImages struct {
 	} `yaml:"images"`
 }
 
-func parseKustomizationImage(path string) (string, error) {
+func parseKustomizationImages(path string) ([]string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	var k kustomImages
 	if err := yaml.Unmarshal(data, &k); err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(k.Images) == 0 {
-		return "", fmt.Errorf("kustomization sem bloco images em %s", path)
+		return nil, fmt.Errorf("kustomization sem bloco images em %s", path)
 	}
-	img := k.Images[0]
-	name := img.Name
-	if img.NewName != "" {
-		name = img.NewName
+	repos := make([]string, 0, len(k.Images))
+	for _, img := range k.Images {
+		name := img.Name
+		if img.NewName != "" {
+			name = img.NewName
+		}
+		repos = append(repos, normalizeImageRepo(name))
 	}
-	return name, nil
+	return repos, nil
 }
 
-func validateClues(appName, imageName, appPath, repoName, owner, kustImage string, kustErr error, hasHinfra bool) error {
+func parseKustomizationImage(path string) (string, error) {
+	repos, err := parseKustomizationImages(path)
+	if err != nil {
+		return "", err
+	}
+	return repos[0], nil
+}
+
+func validateClues(appName string, images map[string]string, legacyImage, appPath, repoName, owner string, kustImages []string, kustErr error, hasHinfra bool) error {
 	expectedFromOrigin := owner + "/" + repoName
 	originMatchesRepo := repoName == appName
+	hinfraRepos := hintraImageRepos(images, legacyImage)
 
 	if kustErr != nil {
 		if hasHinfra {
-			// hinfra aponta para appPath sem kustomization — só ok se for onboarding novo
 			return nil
 		}
 		if !originMatchesRepo {
@@ -179,22 +205,20 @@ func validateClues(appName, imageName, appPath, repoName, owner, kustImage strin
 		return fmt.Errorf("apps/%s/kustomization.yaml: %w", appName, kustErr)
 	}
 
-	kustRepo := strings.TrimPrefix(kustImage, ImageRegistry+"/")
 	conflicts := []string{}
-
-	if kustRepo != "" && kustRepo != imageName {
-		conflicts = append(conflicts, fmt.Sprintf("image em hinfra/origin (%s) ≠ kustomization (%s)", imageName, kustRepo))
+	if !imageSetsMatch(hinfraRepos, kustImages) {
+		conflicts = append(conflicts, fmt.Sprintf("images em hinfra/origin (%s) ≠ kustomization (%s)", strings.Join(hinfraRepos, ", "), strings.Join(kustImages, ", ")))
 	}
 	if !originMatchesRepo && !hasHinfra {
 		conflicts = append(conflicts, fmt.Sprintf("origin repo (%s) ≠ app (%s); crie hinfra.yml ou passe app explicitamente", repoName, appName))
 	}
 	if hasHinfra && !strings.HasSuffix(appPath, "/"+appName) && appPath != "apps/"+appName {
-		if kustRepo != "" && !strings.Contains(kustRepo, appName) {
-			conflicts = append(conflicts, fmt.Sprintf("hinfra app (%s) não corresponde à image do kustomization (%s)", appName, kustRepo))
+		if len(kustImages) > 0 && !anyImageContains(kustImages, appName) {
+			conflicts = append(conflicts, fmt.Sprintf("hinfra app (%s) não corresponde às images do kustomization (%s)", appName, strings.Join(kustImages, ", ")))
 		}
 	}
-	if expectedFromOrigin != imageName && !hasHinfra && repoName == appName && kustRepo != imageName {
-		conflicts = append(conflicts, fmt.Sprintf("origin image (%s) ≠ candidato (%s)", expectedFromOrigin, imageName))
+	if len(images) == 0 && expectedFromOrigin != legacyImage && !hasHinfra && repoName == appName && len(kustImages) > 0 && kustImages[0] != legacyImage {
+		conflicts = append(conflicts, fmt.Sprintf("origin image (%s) ≠ candidato (%s)", expectedFromOrigin, legacyImage))
 	}
 
 	if len(conflicts) > 0 {
@@ -204,6 +228,52 @@ func validateClues(appName, imageName, appPath, repoName, owner, kustImage strin
 		}
 	}
 	return nil
+}
+
+func hintraImageRepos(images map[string]string, legacyImage string) []string {
+	if len(images) > 0 {
+		repos := make([]string, 0, len(images))
+		for _, repo := range images {
+			repos = append(repos, normalizeImageRepo(repo))
+		}
+		sort.Strings(repos)
+		return repos
+	}
+	if legacyImage != "" {
+		return []string{normalizeImageRepo(legacyImage)}
+	}
+	return nil
+}
+
+func imageSetsMatch(hinfraRepos, kustImages []string) bool {
+	if len(hinfraRepos) == 0 {
+		return true
+	}
+	if len(kustImages) == 0 {
+		return true
+	}
+	if len(hinfraRepos) != len(kustImages) {
+		return false
+	}
+	a := append([]string(nil), hinfraRepos...)
+	b := append([]string(nil), kustImages...)
+	sort.Strings(a)
+	sort.Strings(b)
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func anyImageContains(images []string, needle string) bool {
+	for _, img := range images {
+		if strings.Contains(img, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func ImageFromKustomization(path string) (imageRef, tag string, err error) {
@@ -230,4 +300,24 @@ func AppDirExists(infraRepo, namespace string) bool {
 	path := filepath.Join(infraRepo, "apps", namespace)
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
+}
+
+func ImagesDeployed(podImages []string, imageRefs []string, sha string) bool {
+	for _, ref := range imageRefs {
+		repo := normalizeImageRepo(ref)
+		found := false
+		for _, podImage := range podImages {
+			if !strings.Contains(podImage, sha) {
+				continue
+			}
+			if strings.Contains(podImage, repo) || strings.Contains(podImage, ref) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
