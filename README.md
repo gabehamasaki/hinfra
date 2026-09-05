@@ -23,6 +23,8 @@ platform/
   argocd/             values do Helm
 apps/
   <projeto>/          manifests do projeto (deployment/service/ingress/kustomization)
+tools/
+  mcp/                infra-mcp — servidor MCP local (não roda no cluster)
 ```
 
 ## Preparar sua máquina local
@@ -54,7 +56,25 @@ ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --limit <host>
 
 Pra adicionar um worker: acrescente o host em `ansible/inventory/hosts.ini` sob `[k3s_agents]` e rode os dois comandos acima com `--limit` nesse host.
 
+## MCP local (`infra-mcp`)
+
+Ferramenta de desenvolvimento que roda na sua máquina — dá ao agente, de dentro de qualquer repo de projeto, diagnóstico de deploy, leitura do cluster e scaffold de CI/CD. **Não é camada da infra** (não roda na VPS nem no ArgoCD). Detalhes em [`docs/12-mcp.md`](docs/12-mcp.md).
+
+```bash
+# config (uma vez por máquina)
+mkdir -p ~/.config/infra-mcp
+echo 'infraRepo: /caminho/para/este/repo' > ~/.config/infra-mcp/config.yaml
+
+make -C tools/mcp install
+infra-mcp --selftest
+claude mcp add --scope user infra -- ~/.local/bin/infra-mcp
+```
+
+No repo de um projeto: `deploy_status`, `app_health`, `scaffold_workflow`, etc. Opcionalmente, `hinfra.yml` na raiz do projeto para binding explícito (útil em forks).
+
 ## Registrar um projeto novo
+
+Com o MCP instalado, use `scaffold_app` e `scaffold_workflow` (ver [`docs/12-mcp.md`](docs/12-mcp.md)). Manualmente:
 
 1. Criar `apps/<projeto>/` com `deployment.yaml`, `service.yaml`, `ingress.yaml`, `kustomization.yaml` (copiar de `apps/my-portfolio/` como referência).
 2. Criar `clusters/production/apps/<projeto>-app.yaml` (Application do ArgoCD apontando pra `apps/<projeto>`).
