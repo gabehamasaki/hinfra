@@ -17,6 +17,7 @@
   become: true
   roles:
     - k3s_server
+    - k3s_backup
 
 - name: k3s agents (workers)
   hosts: k3s_agents

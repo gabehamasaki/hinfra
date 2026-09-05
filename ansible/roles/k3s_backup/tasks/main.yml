@@ -1,0 +1,24 @@
+---
+- name: sqlite3 instalado (necessário pro backup online do datastore)
+  ansible.builtin.apt:
+    name: sqlite3
+    state: present
+
+- name: Script de backup
+  ansible.builtin.template:
+    src: k3s-backup.sh.j2
+    dest: /usr/local/bin/k3s-backup.sh
+    mode: "0755"
+
+- name: systemd service + timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop:
+    - k3s-backup.service
+    - k3s-backup.timer
+  notify: reload systemd e habilitar timer
+
+- name: Rodar handlers agora (garante o timer ativo já nesta execução)
+  ansible.builtin.meta: flush_handlers

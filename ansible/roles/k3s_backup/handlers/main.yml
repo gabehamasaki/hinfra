@@ -1,0 +1,7 @@
+---
+- name: reload systemd e habilitar timer
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: k3s-backup.timer
+    enabled: true
+    state: restarted

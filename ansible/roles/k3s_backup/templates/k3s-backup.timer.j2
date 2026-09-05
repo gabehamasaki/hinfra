@@ -1,0 +1,9 @@
+[Unit]
+Description=Roda o backup do k3s diariamente
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target

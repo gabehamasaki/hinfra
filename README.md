@@ -36,6 +36,9 @@ sudo tailscale up
 - kubectl: sua máquina precisa estar na tailnet (`tailscale up`). Kubeconfig local separado, `server:` apontando pro IP tailscale do node `k3s_server`.
 - ArgoCD: só acessível via Tailscale, em `https://argocd.hamasakis.cloud` (sem exposição pública).
 
+### DNS do ArgoCD (passo manual, por cluster)
+Depois que o node `k3s_server` tiver um IP Tailscale, crie um registro `A` público em `argocd.<infra_domain>` apontando pra esse IP (ex: `100.86.241.1`), **não proxiado**. Parece contraditório ("público" apontando pra algo privado), mas funciona: o IP do Tailscale (faixa `100.64.0.0/10`) só é roteável por quem está na tailnet — fora dela a conexão simplesmente não chega, e o middleware do Traefik (`platform/argocd/tailnet-only-middleware.yaml.j2`) bloqueia mesmo assim. Isso evita precisar editar `/etc/hosts` em cada dispositivo. Sem esse registro, o cert-manager consegue emitir o certificado normalmente (o desafio é DNS-01, não depende de reachability), mas ninguém consegue resolver o nome.
+
 ## Provisionar uma VPS nova (worker ou cluster novo)
 
 ```bash

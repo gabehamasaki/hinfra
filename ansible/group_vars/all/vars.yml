@@ -22,3 +22,5 @@ cert_manager_namespace: cert-manager
 sealed_secrets_namespace: kube-system
 
 k3s_kubeconfig: /etc/rancher/k3s/k3s.yaml
+k3s_backup_dir: /var/backups/k3s
+k3s_backup_retention_days: 7
