@@ -43,3 +43,6 @@
     - sealed_secrets
     - cert_manager
     - argocd
+    - keda
+    - cnpg_operator
+    - data_services_secrets

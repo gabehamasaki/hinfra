@@ -1,0 +1,57 @@
+---
+# Credenciais dos serviços de dados compartilhados. Criadas direto pelo Ansible
+# a partir do vault (mesma lógica do token do Cloudflare): os manifests em
+# data-services/ (geridos pelo ArgoCD) só referenciam o NOME do secret, nunca
+# o valor - o valor não passa pelo git nem em texto puro nem sealed.
+
+- name: Namespaces dos serviços de dados
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ item }}"
+  loop:
+    - postgres
+    - valkey
+    - rustfs
+
+- name: Secret da superuser do Postgres (usado pelo CloudNativePG)
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: postgres-superuser
+        namespace: postgres
+      type: kubernetes.io/basic-auth
+      stringData:
+        username: postgres
+        password: "{{ vault_postgres_superuser_password }}"
+
+- name: Secret do Valkey
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: valkey-auth
+        namespace: valkey
+      stringData:
+        default: "{{ vault_valkey_password }}"
+
+- name: Secret do RustFS
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: rustfs-credentials
+        namespace: rustfs
+      stringData:
+        RUSTFS_ACCESS_KEY: "{{ vault_rustfs_access_key }}"
+        RUSTFS_SECRET_KEY: "{{ vault_rustfs_secret_key }}"

@@ -1,0 +1,23 @@
+---
+# KEDA: motor de autoscaling usado pra ligar/desligar serviços por horário
+# (CronScaledObject) ou por atividade. Plataforma - instalado via Ansible/Helm.
+- name: Adicionar repo Helm do KEDA
+  kubernetes.core.helm_repository:
+    name: kedacore
+    repo_url: https://kedacore.github.io/charts
+
+- name: Instalar/atualizar KEDA
+  kubernetes.core.helm:
+    name: keda
+    chart_ref: kedacore/keda
+    release_namespace: keda
+    create_namespace: true
+    wait: true
+    values:
+      resources:
+        operator:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            memory: 128Mi

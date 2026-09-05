@@ -1,0 +1,40 @@
+# Valkey compartilhado (fork open-source do Redis, mesma API). Standalone por
+# enquanto - pra virar master+réplicas quando houver workers, basta trocar
+# replica.enabled pra true e ajustar replica.replicas, sem mudar mais nada.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: valkey
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://valkey.io/valkey-helm/
+    chart: valkey
+    targetRevision: "*"
+    helm:
+      values: |
+        auth:
+          enabled: true
+          usersExistingSecret: valkey-auth
+        dataStorage:
+          enabled: true
+          requestedSize: 512Mi
+          className: local-path
+        resources:
+          requests:
+            cpu: 25m
+            memory: 32Mi
+          limits:
+            memory: 128Mi
+        replica:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: valkey
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

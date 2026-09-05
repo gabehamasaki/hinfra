@@ -1,0 +1,21 @@
+# Exemplo de "ficar off quando não tem uso" via KEDA (schedule-based, não é
+# wake-on-connect - ver README para a explicação da limitação). Renomeie pra
+# `idle-schedule.yaml` e adicione ao `apps/rustfs/kustomization.yaml` (ou aplique
+# direto) pra ativar. Confirme o nome do Deployment antes: `kubectl get deploy -n rustfs`.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rustfs-idle-schedule
+  namespace: rustfs
+spec:
+  scaleTargetRef:
+    name: rustfs
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  triggers:
+    - type: cron
+      metadata:
+        timezone: America/Sao_Paulo
+        start: "0 8 * * *"    # liga 08:00
+        end: "0 22 * * *"     # desliga 22:00
+        desiredReplicas: "1"

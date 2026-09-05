@@ -9,3 +9,9 @@
 vault_tailscale_authkey: "tskey-auth-xxxxxxxxxxxx"   # gerado em https://login.tailscale.com/admin/settings/keys (reutilizável, sem expiração, com a tag k8s)
 vault_cloudflare_api_token: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Zone:DNS:Edit, escopo nas zonas hamasakis.cloud e hamasakis.dev
 vault_infra_repo_token: "github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # fine-grained, restrito ao repo infra, Contents: Read and write
+
+# Serviços de dados compartilhados (data-services/) - gerar com `openssl rand ...`
+vault_postgres_superuser_password: "xxxxxxxxxxxxxxxxxxxxxxxx"
+vault_valkey_password: "xxxxxxxxxxxxxxxxxxxxxxxxxx"
+vault_rustfs_access_key: "xxxxxxxxxxxxxxxxxxxx"
+vault_rustfs_secret_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

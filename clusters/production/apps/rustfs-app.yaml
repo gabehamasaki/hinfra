@@ -1,0 +1,55 @@
+# RustFS compartilhado (armazenamento S3-compatível). Standalone (1 pod) por
+# enquanto - modo "distributed" (erasure coding entre pods) só faz sentido com
+# >=2 nodes de verdade, então isso fica pra quando houver workers.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rustfs
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.rustfs.com
+    chart: rustfs
+    targetRevision: "*"
+    helm:
+      values: |
+        mode:
+          standalone:
+            enabled: true
+          distributed:
+            enabled: false
+        secret:
+          existingSecret: rustfs-credentials
+        storageclass:
+          name: local-path
+          dataStorageSize: 5Gi
+          logStorageSize: 256Mi
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 256Mi
+        ingress:
+          enabled: true
+          className: traefik
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+            traefik.ingress.kubernetes.io/router.middlewares: "argocd-argocd-tailnet-only@kubernetescrd"
+          hosts:
+            - host: s3.hamasakis.cloud
+              paths:
+                - path: /
+                  pathType: Prefix
+          tls:
+            enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rustfs
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
