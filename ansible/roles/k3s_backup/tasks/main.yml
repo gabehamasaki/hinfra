@@ -4,6 +4,27 @@
     name: sqlite3
     state: present
 
+- name: rclone instalado (envio offsite pro R2)
+  ansible.builtin.apt:
+    name: rclone
+    state: present
+  when: k3s_backup_remote_enabled | bool
+
+- name: Diretório de configuração do backup
+  ansible.builtin.file:
+    path: /etc/k3s-backup
+    state: directory
+    mode: "0700"
+  when: k3s_backup_remote_enabled | bool
+
+- name: Configuração do rclone (credenciais do R2)
+  ansible.builtin.template:
+    src: rclone.conf.j2
+    dest: /etc/k3s-backup/rclone.conf
+    mode: "0600"
+  when: k3s_backup_remote_enabled | bool
+  no_log: true
+
 - name: Script de backup
   ansible.builtin.template:
     src: k3s-backup.sh.j2

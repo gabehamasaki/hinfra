@@ -10,6 +10,12 @@ vault_tailscale_authkey: "tskey-auth-xxxxxxxxxxxx"   # gerado em https://login.t
 vault_cloudflare_api_token: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Zone:DNS:Edit, escopo nas zonas hamasakis.cloud e hamasakis.dev
 vault_infra_repo_token: "github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # fine-grained, restrito ao repo infra, Contents: Read and write
 
+# Backup offsite no Cloudflare R2 (opcional - sem isso o backup fica só local).
+# Criar em: Cloudflare Dashboard -> R2 -> API -> Manage API Tokens -> Create,
+# permissão "Object Read & Write" no bucket infra-backups.
+vault_r2_access_key_id: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+vault_r2_secret_access_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
 # Serviços de dados compartilhados (data-services/) - gerar com `openssl rand ...`
 vault_postgres_superuser_password: "xxxxxxxxxxxxxxxxxxxxxxxx"
 vault_valkey_password: "xxxxxxxxxxxxxxxxxxxxxxxxxx"

@@ -24,3 +24,12 @@ sealed_secrets_namespace: kube-system
 k3s_kubeconfig: /etc/rancher/k3s/k3s.yaml
 k3s_backup_dir: /var/backups/k3s
 k3s_backup_retention_days: 7
+
+# Backup offsite no Cloudflare R2. Ativa sozinho quando as credenciais existem
+# no vault - sem elas o backup continua funcionando, só local. Isso mantém o
+# repositório utilizável em uma VPS nova antes de haver credencial.
+r2_account_id: 347d85d3ee7db762e6af1cdfb874f8e8
+r2_backup_bucket: infra-backups
+k3s_backup_remote_name: r2
+k3s_backup_remote_retention_days: 30
+k3s_backup_remote_enabled: "{{ vault_r2_access_key_id is defined and (vault_r2_access_key_id | length) > 0 }}"

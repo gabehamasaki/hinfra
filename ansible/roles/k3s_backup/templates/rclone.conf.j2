@@ -1,0 +1,11 @@
+; Gerado pelo Ansible - contém credenciais, modo 0600.
+; R2 é compatível com S3; o endpoint é derivado do account id da Cloudflare.
+[{{ k3s_backup_remote_name }}]
+type = s3
+provider = Cloudflare
+region = auto
+endpoint = https://{{ r2_account_id }}.r2.cloudflarestorage.com
+access_key_id = {{ vault_r2_access_key_id }}
+secret_access_key = {{ vault_r2_secret_access_key }}
+acl = private
+no_check_bucket = true

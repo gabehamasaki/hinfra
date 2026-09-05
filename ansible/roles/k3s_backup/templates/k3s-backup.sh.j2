@@ -1,13 +1,40 @@
 #!/usr/bin/env bash
-# Backup online (sem parar o k3s) do datastore SQLite, com retenção.
+# Backup do datastore SQLite do k3s.
+#
+# Local:  cópia online (sem parar o k3s) em {{ k3s_backup_dir }}, retenção de {{ k3s_backup_retention_days }} dias.
+{% if k3s_backup_remote_enabled | bool %}
+# Offsite: envio para {{ k3s_backup_remote_name }}:{{ r2_backup_bucket }}, retenção de {{ k3s_backup_remote_retention_days }} dias.
+#
+# Falha no envio offsite derruba o script de propósito: um backup remoto que
+# falha em silêncio por meses é pior que não ter backup nenhum, porque você
+# acha que tem. `systemctl status k3s-backup` mostra a falha.
+{% else %}
+# Offsite: desabilitado (sem credenciais do R2 no vault).
+{% endif %}
 set -euo pipefail
 
 BACKUP_DIR="{{ k3s_backup_dir }}"
 DB="/var/lib/rancher/k3s/server/db/state.db"
 STAMP=$(date +%Y%m%d-%H%M%S)
+ARCHIVE="${BACKUP_DIR}/state-${STAMP}.db.gz"
 
 mkdir -p "$BACKUP_DIR"
+
+# .backup do sqlite3 é consistente num banco em uso; `cp` não seria.
 sqlite3 "$DB" ".backup '${BACKUP_DIR}/state-${STAMP}.db'"
 gzip "${BACKUP_DIR}/state-${STAMP}.db"
 
 find "$BACKUP_DIR" -name 'state-*.db.gz' -mtime +{{ k3s_backup_retention_days }} -delete
+{% if k3s_backup_remote_enabled | bool %}
+
+RCLONE_CONF="/etc/k3s-backup/rclone.conf"
+REMOTE="{{ k3s_backup_remote_name }}:{{ r2_backup_bucket }}/k3s/$(hostname)"
+
+rclone --config "$RCLONE_CONF" copy "$ARCHIVE" "$REMOTE/"
+
+# confirma que o objeto chegou, em vez de confiar no exit code do copy
+rclone --config "$RCLONE_CONF" lsf "$REMOTE/$(basename "$ARCHIVE")" > /dev/null
+
+rclone --config "$RCLONE_CONF" delete "$REMOTE/" \
+  --min-age {{ k3s_backup_remote_retention_days }}d
+{% endif %}
