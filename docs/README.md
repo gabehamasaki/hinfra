@@ -19,6 +19,7 @@ Para um resumo visual de tudo, abra [`overview.html`](overview.html) no navegado
 | [09 - CI/CD](09-cicd.md) | GitHub Actions, GHCR, onboarding de projeto novo |
 | [10 - Runbooks](10-runbooks.md) | Operações do dia a dia, passo a passo |
 | [11 - Armadilhas](11-armadilhas.md) | Problemas reais já enfrentados e como foram resolvidos |
+| [12 - MCP](12-mcp.md) | Servidor MCP local para deploy, diagnóstico e scaffold a partir de qualquer repo de projeto |
 
 ## Referência rápida
 
