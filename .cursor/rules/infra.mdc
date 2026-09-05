@@ -1,0 +1,68 @@
+---
+description: Contexto central da infra — camadas, invariantes, acesso e restrições de recursos
+alwaysApply: true
+---
+
+# infra
+
+Provisionamento (Ansible) + GitOps (ArgoCD) de um cluster k3s numa VPS única, hospedando `hamasakis.cloud` (plataforma) e `hamasakis.dev` (projetos).
+
+Documentação completa em [`docs/`](docs/) — **é a fonte de verdade**. Este arquivo e as skills apontam para lá em vez de repetir conteúdo, para não existirem duas versões que divergem.
+
+## A regra que organiza tudo
+
+Quatro camadas, separadas por **frequência de mudança** — é isso que define quem gerencia o quê:
+
+| Camada | Quem gerencia | Onde |
+| --- | --- | --- |
+| Provisionamento (hardening, Tailscale, k3s) | Ansible, roda 1× por servidor | `ansible/` |
+| Plataforma (cert-manager, Sealed Secrets, ArgoCD, KEDA, operadores) | Ansible + Helm | `ansible/roles/`, `platform/` |
+| Serviços de dados (Postgres, Valkey, RustFS) | ArgoCD | `data-services/` |
+| Projetos (imagem construída pelo CI) | ArgoCD | `apps/` |
+
+O ArgoCD **não** gerencia as duas primeiras camadas: ele depende do cert-manager (certificado próprio) e do repositório Git para funcionar. Componente do qual o ArgoCD depende não pode depender do ArgoCD para existir.
+
+Ao adicionar algo novo, a primeira pergunta é sempre: **isso muda com que frequência?** A resposta escolhe a camada.
+
+## Invariantes
+
+Violar qualquer um destes causa dano difícil ou impossível de reverter:
+
+- **Nunca commitar `vault.yml` em texto puro.** Fluxo: `ansible-vault encrypt` e só então `git add -f`. Segredo que entra no histórico do Git fica recuperável para sempre, mesmo removido depois.
+- **Nunca expor console administrativo publicamente.** ArgoCD e RustFS são alcançáveis só pela tailnet, via middleware do Traefik. O DNS deles aponta para o IP Tailscale (`100.86.241.1`), que não é roteável fora dela.
+- **Sempre fixar `targetRevision`** em Application com fonte Helm. `"*"` trava o Application em `Unknown` sem mensagem de erro.
+- **`.secrets/` nunca vai para o Git.** Contém chave SSH, kubeconfig e a master key do Sealed Secrets.
+- **`git pull --rebase` antes de push.** O CI dos projetos commita neste repo (bump de tag de imagem), então o remoto anda sozinho.
+- **Nunca `git push --force` ou `git push -f`.**
+
+## Acesso
+
+```bash
+ssh vps                                              # usuário deploy; root desabilitado
+export KUBECONFIG=.secrets/vps-1.kubeconfig          # exige estar na tailnet
+```
+
+Ansible precisa de pty — sem isso aborta com `requires blocking IO`:
+
+```bash
+cd ansible && script -qec "ansible-playbook -i inventory/hosts.ini site.yml \
+  --private-key ../.secrets/vps-1_deploy_ed25519" /dev/null
+```
+
+## Restrição de recursos
+
+2 vCPU / 8 GB, node único. Memória tem folga; **CPU é o limite real** — já há ~41% do orçamento de requests comprometido. Toda adição ao cluster precisa de `requests`/`limits` explícitos, e qualquer coisa que peça mais que ~200m de CPU merece justificativa (foi por isso que Kafka ficou de fora e Prometheus segue adiado).
+
+## Verificar antes de afirmar
+
+Esta infra tem várias camadas onde configuração errada **falha em silêncio** em vez de dar erro: valor de Helm que não existe é ignorado, task do Ansible pulada por `creates:` parece `ok`, anotação de Ingress sem efeito. Depois de mudar algo, confirme que produziu efeito — `kubectl get`, `curl`, o pod rodando — em vez de concluir pelo comando ter retornado sucesso.
+
+## Skills do projeto
+
+Workflows especializados em `.cursor/skills/`:
+
+- `diagnosticar-cluster` — algo quebrado, lento ou instável
+- `gerenciar-segredos` — credenciais, vault, kubeseal
+- `novo-projeto` — deploy ponta a ponta de um app novo
+- `provisionar-servidor` — Ansible, bootstrap, hardening
+- `servico-no-cluster` — Application, Helm, Ingress, exposição

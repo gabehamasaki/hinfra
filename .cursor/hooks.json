@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "bash .cursor/hooks/bloqueia-vault-em-texto-puro.sh",
+        "matcher": "git commit",
+        "failClosed": true
+      }
+    ]
+  }
+}
