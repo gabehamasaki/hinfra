@@ -55,6 +55,23 @@
       -- troque com `argocd account update-password` e depois rode:
       kubectl -n {{ argocd_namespace }} delete secret argocd-initial-admin-secret
 
+- name: Credencial do ArgoCD pro repo infra (privado - precisa de PAT pra clonar)
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: infra-repo-creds
+        namespace: "{{ argocd_namespace }}"
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      stringData:
+        type: git
+        url: "https://github.com/gabehamasaki/infra.git"
+        username: gabehamasaki
+        password: "{{ vault_infra_repo_token }}"
+
 - name: Copiar a Application raiz (App of Apps) pro servidor
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../clusters/production/root-app.yaml"

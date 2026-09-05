@@ -8,3 +8,4 @@
 
 vault_tailscale_authkey: "tskey-auth-xxxxxxxxxxxx"   # gerado em https://login.tailscale.com/admin/settings/keys (reutilizável, sem expiração, com a tag k8s)
 vault_cloudflare_api_token: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Zone:DNS:Edit, escopo nas zonas hamasakis.cloud e hamasakis.dev
+vault_infra_repo_token: "github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # fine-grained, restrito ao repo infra, Contents: Read and write
