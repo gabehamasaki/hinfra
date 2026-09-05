@@ -1,0 +1,35 @@
+---
+# Provisiona Tailscale + k3s (server ou agent, conforme o grupo do host) e,
+# só no node k3s_server, os componentes de plataforma (Sealed Secrets, cert-manager, ArgoCD).
+#
+#   ansible-playbook -i inventory/hosts.ini site.yml               # cluster inteiro
+#   ansible-playbook -i inventory/hosts.ini site.yml --limit host  # um host específico (ex: worker novo)
+
+- name: Base + rede privada (todos os hosts do cluster)
+  hosts: k3s_cluster
+  become: true
+  roles:
+    - common
+    - tailscale
+
+- name: k3s server
+  hosts: k3s_server
+  become: true
+  roles:
+    - k3s_server
+
+- name: k3s agents (workers)
+  hosts: k3s_agents
+  become: true
+  roles:
+    - k3s_agent
+
+- name: Componentes de plataforma (só no server, via Helm/kubectl - não pelo ArgoCD)
+  hosts: k3s_server
+  become: true
+  environment:
+    KUBECONFIG: "{{ k3s_kubeconfig }}"
+  roles:
+    - sealed_secrets
+    - cert_manager
+    - argocd

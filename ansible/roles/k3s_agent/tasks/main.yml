@@ -1,0 +1,21 @@
+---
+# Assume que o play de k3s_server já rodou nesta mesma execução (ver site.yml),
+# então hostvars do node [k3s_server] já tem tailscale_ip e k3s_node_token.
+- name: Instalar k3s agent (join via IP tailscale do server)
+  ansible.builtin.shell: |
+    set -e
+    curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_CHANNEL={{ k3s_channel }} \
+      K3S_URL=https://{{ hostvars[groups['k3s_server'][0]].tailscale_ip }}:6443 \
+      K3S_TOKEN={{ hostvars[groups['k3s_server'][0]].k3s_node_token }} \
+      sh -s - agent \
+      --node-ip {{ tailscale_ip }} \
+      --flannel-iface {{ k3s_flannel_iface }}
+  args:
+    creates: /usr/local/bin/k3s-agent
+
+- name: Ajustar MTU do flannel.1 (evita fragmentação sobre WireGuard/tailscale0)
+  ansible.builtin.command: ip link set dev flannel.1 mtu {{ k3s_flannel_mtu }}
+  register: mtu_result
+  changed_when: mtu_result.rc == 0
+  failed_when: false

@@ -1,0 +1,24 @@
+---
+# Variáveis não-sensíveis, compartilhadas por todos os hosts do cluster.
+
+deploy_user: deploy
+
+infra_domain: hamasakis.cloud     # domínio dos serviços de plataforma (argocd, etc)
+apps_domain: hamasakis.dev        # domínio dos projetos
+acme_email: gabriel@hamasakis.dev   # recebe avisos de expiração/problemas do Let's Encrypt
+
+k3s_channel: stable
+
+# Tailscale
+tailscale_tags: "tag:k8s"          # ajuste as ACLs no admin console do Tailscale pra essa tag
+tailscale_hostname: "{{ tailscale_hostname | default(inventory_hostname) }}"
+
+# MTU do flannel sobre a interface tailscale0 (evita fragmentação silenciosa, ver README)
+k3s_flannel_iface: tailscale0
+k3s_flannel_mtu: 1280
+
+argocd_namespace: argocd
+cert_manager_namespace: cert-manager
+sealed_secrets_namespace: kube-system
+
+k3s_kubeconfig: /etc/rancher/k3s/k3s.yaml

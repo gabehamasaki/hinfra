@@ -1,0 +1,93 @@
+---
+# Roda UMA VEZ por VPS nova, autenticado como root:
+#   ansible-playbook -i inventory/hosts.ini bootstrap.yml --limit <host> -u root -k
+#
+# Cria o usuário `deploy` com sudo e uma chave SSH dedicada, valida que ele funciona,
+# e só então fecha o login root via SSH. Ver README para o procedimento completo
+# (incluindo o gate manual de validação antes do hardening final).
+
+- name: Bootstrap - cria usuário deploy
+  hosts: all
+  become: false
+  gather_facts: true
+  vars:
+    deploy_user: deploy
+    deploy_pubkey_path: "{{ playbook_dir }}/../.secrets/{{ inventory_hostname }}_deploy_ed25519.pub"
+  tasks:
+    - name: Gerar par de chaves SSH dedicado pro deploy (local, se ainda não existir)
+      delegate_to: localhost
+      become: false
+      run_once: false
+      community.crypto.openssh_keypair:
+        path: "{{ playbook_dir }}/../.secrets/{{ inventory_hostname }}_deploy_ed25519"
+        type: ed25519
+        comment: "deploy@{{ inventory_hostname }}"
+
+    - name: Criar usuário deploy
+      ansible.builtin.user:
+        name: "{{ deploy_user }}"
+        groups: sudo
+        shell: /bin/bash
+        create_home: true
+
+    - name: Autorizar a chave pública do deploy
+      ansible.posix.authorized_key:
+        user: "{{ deploy_user }}"
+        state: present
+        key: "{{ lookup('file', deploy_pubkey_path) }}"
+
+    - name: Sudoers do deploy (pede senha por padrão)
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/90-deploy
+        content: "{{ deploy_user }} ALL=(ALL) ALL\n"
+        mode: "0440"
+        validate: "visudo -cf %s"
+
+- name: Bootstrap - valida acesso do deploy antes de fechar o root
+  hosts: all
+  become: false
+  gather_facts: false
+  vars:
+    deploy_user: deploy
+    deploy_key_path: "{{ playbook_dir }}/../.secrets/{{ inventory_hostname }}_deploy_ed25519"
+  tasks:
+    - name: Testar login + sudo como deploy (gate anti-lockout)
+      ansible.builtin.command:
+        cmd: >
+          ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes
+          -i {{ deploy_key_path }} {{ deploy_user }}@{{ ansible_host | default(inventory_hostname) }}
+          "sudo -n true && echo DEPLOY_OK"
+      register: deploy_check
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: Falhar aqui se o deploy não estiver funcionando (não prosseguir pro hardening)
+      ansible.builtin.assert:
+        that: "'DEPLOY_OK' in deploy_check.stdout"
+        fail_msg: "Login/sudo como deploy falhou - NÃO prosseguir para o hardening do sshd. Corrija antes de rodar de novo."
+
+- name: Bootstrap - fecha acesso root via SSH (só depois do gate acima passar)
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Desabilitar PermitRootLogin
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+      notify: restart sshd
+
+    - name: Desabilitar PasswordAuthentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+      notify: restart sshd
+
+  handlers:
+    - name: restart sshd
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted

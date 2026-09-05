@@ -1,0 +1,42 @@
+---
+# Instalado via Helm (não pelo ArgoCD - ver README "separação de responsabilidades").
+# Roda só no node [k3s_server], que é onde o kubeconfig local do Helm/kubectl aponta.
+- name: Adicionar repo Helm do Sealed Secrets
+  kubernetes.core.helm_repository:
+    name: sealed-secrets
+    repo_url: https://bitnami-labs.github.io/sealed-secrets
+
+- name: Instalar/atualizar Sealed Secrets controller
+  kubernetes.core.helm:
+    name: sealed-secrets
+    chart_ref: sealed-secrets/sealed-secrets
+    release_namespace: "{{ sealed_secrets_namespace }}"
+    create_namespace: true
+    wait: true
+
+- name: Esperar o controller ficar pronto
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: sealed-secrets
+    namespace: "{{ sealed_secrets_namespace }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 180
+
+- name: Localizar o secret da master key (label sealedsecrets.bitnami.com/sealed-secrets-key=active)
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: "{{ sealed_secrets_namespace }}"
+    label_selectors:
+      - "sealedsecrets.bitnami.com/sealed-secrets-key=active"
+  register: sealed_secrets_key
+
+- name: >
+    AVISO: backup manual obrigatório da master key do Sealed Secrets.
+    Rode: kubectl get secret -n {{ sealed_secrets_namespace }} {{ sealed_secrets_key.resources[0].metadata.name }} -o yaml > backup-sealed-secrets-key.yaml
+    e guarde esse arquivo FORA do cluster (ex: gerenciador de senhas). Sem isso, um cluster novo
+    não decifra os SealedSecrets já commitados no repo.
+  ansible.builtin.debug:
+    msg: "Master key: {{ sealed_secrets_key.resources[0].metadata.name }} (namespace {{ sealed_secrets_namespace }}) - FAÇA O BACKUP AGORA, manualmente."

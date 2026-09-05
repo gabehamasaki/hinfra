@@ -1,0 +1,39 @@
+---
+- name: Instalar Tailscale (script oficial, idempotente)
+  ansible.builtin.shell: |
+    set -e
+    if ! command -v tailscale >/dev/null 2>&1; then
+      curl -fsSL https://tailscale.com/install.sh | sh
+    fi
+  args:
+    creates: /usr/bin/tailscale
+
+- name: Habilitar IP forwarding (necessário pro k3s/flannel sobre a tailnet)
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: "1"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+
+- name: Entrar na tailnet
+  ansible.builtin.command: >
+    tailscale up
+    --authkey={{ vault_tailscale_authkey }}
+    --hostname={{ tailscale_hostname }}
+    --advertise-tags={{ tailscale_tags }}
+    --ssh=false
+  args:
+    creates: /var/lib/tailscale/tailscaled.state
+
+- name: Obter IP tailscale deste host
+  ansible.builtin.command: tailscale ip -4
+  register: tailscale_ip_result
+  changed_when: false
+
+- name: Guardar IP tailscale como fact
+  ansible.builtin.set_fact:
+    tailscale_ip: "{{ tailscale_ip_result.stdout | trim }}"

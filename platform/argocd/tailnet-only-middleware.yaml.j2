@@ -1,0 +1,9 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-tailnet-only
+  namespace: {{ argocd_namespace }}
+spec:
+  ipAllowList:
+    sourceRange:
+      - 100.64.0.0/10   # CIDR da tailnet (CGNAT range usado pelo Tailscale) - nunca liberar geral

@@ -1,0 +1,57 @@
+---
+- name: Atualizar cache de pacotes e fazer upgrade
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: safe
+    cache_valid_time: 3600
+
+- name: Instalar pacotes base
+  ansible.builtin.apt:
+    name:
+      - ufw
+      - fail2ban
+      - curl
+      - git
+      - ca-certificates
+    state: present
+
+- name: UFW - política padrão (deny incoming, allow outgoing)
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: UFW - política padrão outgoing
+  community.general.ufw:
+    policy: allow
+    direction: outgoing
+
+- name: UFW - permitir SSH (22) na interface pública
+  community.general.ufw:
+    rule: limit
+    port: "22"
+    proto: tcp
+
+- name: UFW - permitir HTTP (80) na interface pública
+  community.general.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+
+- name: UFW - permitir HTTPS (443) na interface pública
+  community.general.ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+
+- name: UFW - liberar tudo na interface tailscale0 (tráfego de cluster/API)
+  community.general.ufw:
+    rule: allow
+    interface: tailscale0
+    direction: in
+
+- name: fail2ban habilitado e ativo
+  ansible.builtin.systemd:
+    name: fail2ban
+    enabled: true
+    state: started

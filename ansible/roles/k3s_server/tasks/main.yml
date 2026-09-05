@@ -1,0 +1,51 @@
+---
+- name: Instalar k3s server (bind na tailnet, flannel sobre tailscale0)
+  ansible.builtin.shell: |
+    set -e
+    curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_CHANNEL={{ k3s_channel }} \
+      sh -s - server \
+      --node-ip {{ tailscale_ip }} \
+      --advertise-address {{ tailscale_ip }} \
+      --flannel-iface {{ k3s_flannel_iface }} \
+      --tls-san {{ tailscale_ip }} \
+      --write-kubeconfig-mode 644
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Ajustar MTU do flannel.1 (evita fragmentação sobre WireGuard/tailscale0)
+  ansible.builtin.command: ip link set dev flannel.1 mtu {{ k3s_flannel_mtu }}
+  register: mtu_result
+  changed_when: mtu_result.rc == 0
+  failed_when: false
+
+- name: Esperar o node ficar Ready
+  ansible.builtin.command: k3s kubectl get node {{ inventory_hostname }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  register: node_ready
+  until: node_ready.stdout == "True"
+  retries: 12
+  delay: 5
+  changed_when: false
+
+- name: Ler o node-token (usado pelos agents pra fazer join)
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: node_token_raw
+
+- name: Guardar node-token como fact
+  ansible.builtin.set_fact:
+    k3s_node_token: "{{ node_token_raw['content'] | b64decode | trim }}"
+
+- name: Copiar kubeconfig do servidor pra dentro do repo (uso local, gitignored)
+  ansible.builtin.fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ playbook_dir }}/../.secrets/{{ inventory_hostname }}.kubeconfig"
+    flat: true
+
+- name: Ajustar o kubeconfig baixado pra apontar pro IP tailscale (em vez de 127.0.0.1)
+  delegate_to: localhost
+  become: false
+  ansible.builtin.replace:
+    path: "{{ playbook_dir }}/../.secrets/{{ inventory_hostname }}.kubeconfig"
+    regexp: 'https://127\.0\.0\.1:6443'
+    replace: "https://{{ tailscale_ip }}:6443"

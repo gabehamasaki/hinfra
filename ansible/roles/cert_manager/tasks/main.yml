@@ -1,0 +1,54 @@
+---
+# Instalado via Helm (não pelo ArgoCD). O token do Cloudflare é criado direto como
+# Secret pelo Ansible a partir do vault (nunca passa pelo git, nem em texto puro
+# nem sealed - simplificação válida porque este componente não é gerido por GitOps).
+- name: Adicionar repo Helm do cert-manager
+  kubernetes.core.helm_repository:
+    name: jetstack
+    repo_url: https://charts.jetstack.io
+
+- name: Instalar/atualizar cert-manager (com CRDs)
+  kubernetes.core.helm:
+    name: cert-manager
+    chart_ref: jetstack/cert-manager
+    release_namespace: "{{ cert_manager_namespace }}"
+    create_namespace: true
+    wait: true
+    values:
+      crds:
+        enabled: true
+
+- name: Esperar o webhook do cert-manager ficar pronto
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: cert-manager-webhook
+    namespace: "{{ cert_manager_namespace }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 180
+
+- name: Criar Secret com o token da API do Cloudflare
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: cloudflare-api-token
+        namespace: "{{ cert_manager_namespace }}"
+      type: Opaque
+      stringData:
+        api-token: "{{ vault_cloudflare_api_token }}"
+
+- name: Renderizar o ClusterIssuer
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../platform/cert-manager/cluster-issuer.yaml.j2"
+    dest: /tmp/cluster-issuer.yaml
+    mode: "0600"
+
+- name: Aplicar o ClusterIssuer (Let's Encrypt via DNS-01/Cloudflare)
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/cluster-issuer.yaml

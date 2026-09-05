@@ -1,0 +1,61 @@
+---
+- name: Adicionar repo Helm do ArgoCD
+  kubernetes.core.helm_repository:
+    name: argo
+    repo_url: https://argoproj.github.io/argo-helm
+
+- name: Renderizar o Middleware (Tailscale-only) e os values do Helm
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../platform/argocd/{{ item.src }}"
+    dest: "/tmp/{{ item.dest }}"
+    mode: "0600"
+  loop:
+    - { src: tailnet-only-middleware.yaml.j2, dest: argocd-middleware.yaml }
+    - { src: values.yaml.j2, dest: argocd-values.yaml }
+
+- name: Instalar/atualizar ArgoCD
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    release_namespace: "{{ argocd_namespace }}"
+    create_namespace: true
+    values_files:
+      - /tmp/argocd-values.yaml
+    wait: true
+    wait_timeout: 5m0s
+
+- name: Esperar o argocd-server ficar pronto
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: argocd-server
+    namespace: "{{ argocd_namespace }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 180
+
+- name: Aplicar o Middleware Tailscale-only (Traefik só libera argocd.{{ infra_domain }} pra tailnet)
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/argocd-middleware.yaml
+
+- name: Ler a senha admin inicial do ArgoCD
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: argocd-initial-admin-secret
+    namespace: "{{ argocd_namespace }}"
+  register: argocd_admin_secret
+
+- name: Mostrar a senha admin inicial (troque-a e depois delete o secret - ver README)
+  ansible.builtin.debug:
+    msg: >
+      Senha admin inicial do ArgoCD:
+      {{ argocd_admin_secret.resources[0].data.password | b64decode }}
+      -- troque com `argocd account update-password` e depois rode:
+      kubectl -n {{ argocd_namespace }} delete secret argocd-initial-admin-secret
+
+- name: Aplicar a Application raiz (App of Apps)
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ playbook_dir }}/../clusters/production/root-app.yaml"

@@ -1,0 +1,10 @@
+---
+# Copie este arquivo para `vault.yml` (mesmo diretório), preencha os valores reais,
+# depois criptografe com:
+#   ansible-vault encrypt ansible/group_vars/all/vault.yml
+#
+# `vault.yml` (não criptografado) está no .gitignore — só a versão criptografada
+# deve ser commitada. Depois de criptografado, force o add: `git add -f ansible/group_vars/all/vault.yml`
+
+vault_tailscale_authkey: "tskey-auth-xxxxxxxxxxxx"   # gerado em https://login.tailscale.com/admin/settings/keys (reutilizável, sem expiração, com a tag k8s)
+vault_cloudflare_api_token: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Zone:DNS:Edit, escopo nas zonas hamasakis.cloud e hamasakis.dev

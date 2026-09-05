@@ -1,0 +1,17 @@
+# Ansible
+*.retry
+ansible/group_vars/all/vault.yml
+!ansible/group_vars/all/vault.yml.example
+ansible/.secrets/          # chaves SSH privadas geradas pelo bootstrap.yml - NUNCA commitar
+
+# Local kubeconfigs pulled from the server
+*.kubeconfig
+kubeconfig*.yaml
+
+# Sealed Secrets master key backup - never commit the raw key
+*sealed-secrets-key*.yaml
+!platform/sealed-secrets/README.md
+
+# Misc
+.DS_Store
+.claude/

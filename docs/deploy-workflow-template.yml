@@ -1,0 +1,63 @@
+# Template de referência - copie para `.github/workflows/deploy.yml` no repo do projeto,
+# ajustando IMAGE_NAME e APP_PATH. Requer o secret INFRA_REPO_TOKEN (PAT fine-grained,
+# restrito ao repo infra, permissão Contents: Read/Write) configurado no repo do projeto.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: gabehamasaki/CHANGE-ME   # ex: gabehamasaki/my-portfolio
+  APP_PATH: apps/CHANGE-ME             # caminho dentro do repo infra, ex: apps/my-portfolio
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push da imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Checkout do repo infra
+        uses: actions/checkout@v4
+        with:
+          repository: gabehamasaki/infra
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          path: infra
+
+      - name: Instalar kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Atualizar a tag da imagem no repo infra
+        working-directory: infra/${{ env.APP_PATH }}
+        run: |
+          kustomize edit set image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Commit e push no repo infra
+        working-directory: infra
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ env.APP_PATH }}/kustomization.yaml
+          git diff --cached --quiet && exit 0
+          git commit -m "deploy: ${{ env.IMAGE_NAME }}@${{ github.sha }}"
+          git push

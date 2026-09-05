@@ -1,0 +1,55 @@
+## Valores do Helm chart argo/argo-cd - componentes não usados desligados (recursos: 2vCPU/8GB)
+## e ArgoCD acessível só via Tailscale (nunca exposto publicamente) - ver README.
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false
+
+applicationSet:
+  enabled: false
+
+configs:
+  params:
+    server.insecure: true   # TLS é terminado no Ingress (Traefik), não no próprio ArgoCD server
+
+server:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+      traefik.ingress.kubernetes.io/router.middlewares: "{{ argocd_namespace }}-argocd-tailnet-only@kubernetescrd"
+    hostname: "argocd.{{ infra_domain }}"
+    tls: true
+
+repoServer:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+redis:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
