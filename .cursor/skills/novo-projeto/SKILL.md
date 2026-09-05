@@ -63,7 +63,25 @@ Defina `requests`/`limits` no deployment — CPU é o recurso escasso nesta máq
 
 **3. Dockerfile.** Para build estático, multi-stage terminando em nginx. Confira que o estágio de build copia **todos** os arquivos de configuração da raiz antes do install — um `pnpm-workspace.yaml` ou similar esquecido quebra o build só no CI, nunca localmente.
 
-**4. Workflow** — use `scaffold_workflow` (gera `.github/workflows/deploy.yml` e `hinfra.yml`) ou copie [`docs/deploy-workflow-template.yml`](../../../docs/deploy-workflow-template.yml) e ajuste `IMAGE_NAME` e `APP_PATH`.
+**4. Workflow + `hinfra.yml`** — use `scaffold_workflow` (gera `.github/workflows/deploy.yml` e `hinfra.yml` automaticamente). O MCP escolhe o template single ou monorepo conforme o `hinfra.yml`.
+
+Para monorepos (api + web), crie `hinfra.yml` na raiz do projeto:
+
+```yaml
+app: <projeto>
+host: <projeto>.hamasakis.dev
+exposure: public
+appPath: apps/<projeto>
+namespace: <projeto>
+images:
+  api: gabehamasaki/<projeto>-api
+  web: gabehamasaki/<projeto>-web
+routing:
+  apiPath: /api
+  webPath: /
+```
+
+O `kustomization.yaml` no repo infra deve listar **todas** as imagens. Dockerfiles em `api/` e `web/`. Templates manuais: [`docs/deploy-workflow-template.yml`](../../../docs/deploy-workflow-template.yml) (single) ou [`docs/deploy-workflow-monorepo-template.yml`](../../../docs/deploy-workflow-monorepo-template.yml) (monorepo).
 
 **5. Secret do CI:**
 

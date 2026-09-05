@@ -71,7 +71,7 @@ claude mcp add --scope user infra -- ~/.local/bin/infra-mcp   # Claude Code
 # Cursor: ~/.cursor/mcp.json com command apontando para ~/.local/bin/infra-mcp (ver docs/12-mcp.md)
 ```
 
-No repo de um projeto: `deploy_status`, `app_health`, `scaffold_workflow`, etc. Opcionalmente, `hinfra.yml` na raiz do projeto para binding explícito (útil em forks).
+No repo de um projeto: `deploy_status`, `app_health`, `scaffold_workflow`, etc. Opcionalmente, `hinfra.yml` na raiz do projeto para binding explícito — essencial em forks e monorepos (api + web).
 
 ## Registrar um projeto novo
 
@@ -79,7 +79,9 @@ Com o MCP instalado, use `scaffold_app` e `scaffold_workflow` (ver [`docs/12-mcp
 
 1. Criar `apps/<projeto>/` com `deployment.yaml`, `service.yaml`, `ingress.yaml`, `kustomization.yaml` (copiar de `apps/my-portfolio/` como referência).
 2. Criar `clusters/production/apps/<projeto>-app.yaml` (Application do ArgoCD apontando pra `apps/<projeto>`).
-3. No repo do projeto, copiar `docs/deploy-workflow-template.yml` pra `.github/workflows/deploy.yml`, ajustando `IMAGE_NAME`/`APP_PATH`.
+3. No repo do projeto:
+   - **Single image:** copiar `docs/deploy-workflow-template.yml` para `.github/workflows/deploy.yml`, ajustando `IMAGE_NAME`/`APP_PATH`.
+   - **Monorepo (api + web):** copiar `docs/deploy-workflow-monorepo-template.yml`, ajustar `IMAGE_API`/`IMAGE_WEB`/`APP_PATH`, e criar `hinfra.yml` com bloco `images` (ver `docs/12-mcp.md`).
 4. Configurar no repo do projeto o secret `INFRA_REPO_TOKEN` (PAT fine-grained, restrito a este repo `infra`, permissão Contents: Read/Write).
 5. Se o pacote do GHCR for privado, criar um `imagePullSecret` no namespace do projeto (documentar no `deployment.yaml`).
 6. Commitar e dar push — o ArgoCD sincroniza por polling (~3min) automaticamente.
