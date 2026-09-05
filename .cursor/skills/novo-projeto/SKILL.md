@@ -24,13 +24,24 @@ Não há webhook: o ArgoCD só existe dentro da tailnet e o GitHub não a alcan�
 kubectl annotate application root-app -n argocd argocd.argoproj.io/refresh=hard --overwrite
 ```
 
+## MCP (`infra-mcp`)
+
+Com o servidor MCP instalado (ver [`docs/12-mcp.md`](../../../docs/12-mcp.md)), use as ferramentas em vez de copiar arquivos manualmente:
+
+| Passo | Ferramenta MCP |
+| --- | --- |
+| 1 + 2 — manifestos + Application | `scaffold_app` (`write: false` para preview, `write: true` para gravar) |
+| 4 — workflow + `hinfra.yml` | `scaffold_workflow` |
+| 5 — secret do CI | **não** — o MCP imprime o comando `gh secret set`; configure manualmente |
+| Verificação | `deploy_status` (4 elos do deploy) |
+
 ## Checklist
 
 O fluxo atravessa dois repositórios. Faltar um passo tipicamente se manifesta como `ImagePullBackOff` ou como um deploy que simplesmente nunca acontece.
 
 ### No repositório `infra`
 
-**1. Manifestos** em `apps/<projeto>/` — copie `apps/my-portfolio/` como base: `deployment.yaml`, `service.yaml`, `ingress.yaml`, `kustomization.yaml`.
+**1. Manifestos** em `apps/<projeto>/` — use `scaffold_app` ou copie `apps/my-portfolio/` como base: `deployment.yaml`, `service.yaml`, `ingress.yaml`, `kustomization.yaml`.
 
 O `kustomization.yaml` é o arquivo que o CI edita, então o bloco `images` precisa existir:
 
@@ -46,13 +57,13 @@ images:
 
 Defina `requests`/`limits` no deployment — CPU é o recurso escasso nesta máquina.
 
-**2. Application** em `clusters/production/apps/<projeto>-app.yaml`, apontando para `apps/<projeto>` com `syncPolicy.automated` (prune + selfHeal) e `CreateNamespace=true`.
+**2. Application** em `clusters/production/apps/<projeto>-app.yaml` — incluído no `scaffold_app`, ou copie de `my-portfolio-app.yaml` com `syncPolicy.automated` (prune + selfHeal) e `CreateNamespace=true`.
 
 ### No repositório do projeto
 
 **3. Dockerfile.** Para build estático, multi-stage terminando em nginx. Confira que o estágio de build copia **todos** os arquivos de configuração da raiz antes do install — um `pnpm-workspace.yaml` ou similar esquecido quebra o build só no CI, nunca localmente.
 
-**4. Workflow** — copie [`docs/deploy-workflow-template.yml`](../../../docs/deploy-workflow-template.yml) para `.github/workflows/deploy.yml` e ajuste `IMAGE_NAME` e `APP_PATH`.
+**4. Workflow** — use `scaffold_workflow` (gera `.github/workflows/deploy.yml` e `hinfra.yml`) ou copie [`docs/deploy-workflow-template.yml`](../../../docs/deploy-workflow-template.yml) e ajuste `IMAGE_NAME` e `APP_PATH`.
 
 **5. Secret do CI:**
 
@@ -70,7 +81,7 @@ PAT fine-grained restrito ao repo `infra`, permissão `Contents: Read and write`
 
 ## Verificação
 
-Não conclua que funcionou porque o workflow ficou verde — o deploy tem um segundo salto depois disso.
+Não conclua que funcionou porque o workflow ficou verde — o deploy tem um segundo salto depois disso. Use `deploy_status` no MCP ou manualmente:
 
 ```bash
 gh run watch <run-id> --repo gabehamasaki/<projeto> --exit-status
