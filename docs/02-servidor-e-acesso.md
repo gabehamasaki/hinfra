@@ -187,3 +187,28 @@ kubectl get nodes
 ```
 
 O kubeconfig é baixado automaticamente pelo role `k3s_server` a cada execução do `site.yml`, já com o endereço do servidor reescrito de `127.0.0.1` para o IP da tailnet. Ele fica em `.secrets/`, que está no `.gitignore`.
+
+O role também renomeia cluster, contexto e usuário de `default` (o padrão do k3s) para o nome do host no inventário. Além de `default` ser inútil como nome em ferramentas gráficas, dois clusters chamados `default` colidiriam ao serem mesclados num kubeconfig só — o que quebraria assim que existisse um segundo cluster.
+
+### Ferramentas gráficas no Windows (Lens)
+
+Num ambiente WSL há duas fronteiras a atravessar, e as duas importam:
+
+1. **O Lens roda no Windows** e não enxerga o filesystem do WSL — precisa do kubeconfig em `C:\Users\<usuário>\.kube\config`.
+2. **O kubeconfig aponta para um IP da tailnet**, então o **Tailscale precisa estar conectado no Windows**. O Tailscale do WSL não serve: são dispositivos distintos na tailnet.
+
+```bash
+./scripts/sync-kubeconfig-windows.sh
+```
+
+O script descobre o usuário do Windows, copia o kubeconfig e avisa se o Tailscale de lá não estiver conectado. Se já existir um `config` no Windows, ele **mescla** em vez de sobrescrever, preservando outros clusters — com o arquivo do repositório tendo precedência, para que recriar um cluster atualize a entrada em vez de manter a antiga.
+
+Verificar se o Windows alcança a API antes de abrir o Lens:
+
+```bash
+'/mnt/c/Windows/System32/curl.exe' -sk -o /dev/null -w "%{http_code}\n" https://100.86.241.1:6443/version
+```
+
+`401` é a resposta certa — significa que a API respondeu e só faltou credencial. Timeout significa que o Tailscale do Windows está desconectado.
+
+> **Métricas.** Os gráficos de CPU e memória do Lens dependem de **Prometheus** no cluster, que não está instalado. Sem ele, tudo o mais funciona (navegar recursos, logs, shell em pods, editar YAML) e só os gráficos ficam vazios. O Lens oferece instalar o Prometheus com um clique — numa máquina de 2 vCPU isso custa algumas centenas de MB de RAM, então é uma decisão deliberada, não um clique distraído. Para números pontuais, `kubectl top` já funciona via metrics-server.

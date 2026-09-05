@@ -49,3 +49,21 @@
     path: "{{ playbook_dir }}/../.secrets/{{ inventory_hostname }}.kubeconfig"
     regexp: 'https://127\.0\.0\.1:6443'
     replace: "https://{{ tailscale_ip }}:6443"
+
+# O k3s nomeia cluster, contexto e usuário como "default". Além de ser um nome
+# inútil em ferramentas gráficas, dois clusters "default" colidem ao serem
+# mesclados num kubeconfig só - o que quebraria assim que existir um segundo
+# cluster. Renomear para o nome do host resolve os dois problemas.
+- name: Renomear cluster/contexto/usuário de "default" para o nome do host
+  delegate_to: localhost
+  become: false
+  ansible.builtin.replace:
+    path: "{{ playbook_dir }}/../.secrets/{{ inventory_hostname }}.kubeconfig"
+    regexp: "{{ item }}"
+    replace: '\1{{ inventory_hostname }}'
+  loop:
+    - '^(\s*name: )default$'        # nome do cluster e do contexto
+    - '^(\s*-\s+name: )default$'    # nome do usuário (primeira chave do item da lista)
+    - '^(\s*cluster: )default$'
+    - '^(\s*user: )default$'
+    - '^(current-context: )default$'
