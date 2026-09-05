@@ -19,8 +19,13 @@ make -C tools/mcp install
 # validar config, kubeconfig e tailnet
 infra-mcp --selftest
 
-# registrar no Claude Code (escopo user — disponível em todo repo)
+# Claude Code (escopo user — disponível em todo repo)
 claude mcp add --scope user infra -- ~/.local/bin/infra-mcp
+
+# Cursor (escopo global — disponível em todo repo)
+# ~/.cursor/mcp.json:
+#   { "mcpServers": { "infra": { "command": "/home/hamasaki/.local/bin/infra-mcp" } } }
+# Depois: Settings → MCP → confirmar "infra" conectado (toggle para ligar/desligar quando precisar)
 ```
 
 O kubeconfig é derivado automaticamente de `<infraRepo>/.secrets/vps-1.kubeconfig`. Toda ferramenta que toca o cluster exige estar na tailnet; fora dela, o erro é explícito em ~2s: `não estou na tailnet — rode tailscale up`.

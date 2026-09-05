@@ -67,7 +67,8 @@ echo 'infraRepo: /caminho/para/este/repo' > ~/.config/infra-mcp/config.yaml
 
 make -C tools/mcp install
 infra-mcp --selftest
-claude mcp add --scope user infra -- ~/.local/bin/infra-mcp
+claude mcp add --scope user infra -- ~/.local/bin/infra-mcp   # Claude Code
+# Cursor: ~/.cursor/mcp.json com command apontando para ~/.local/bin/infra-mcp (ver docs/12-mcp.md)
 ```
 
 No repo de um projeto: `deploy_status`, `app_health`, `scaffold_workflow`, etc. Opcionalmente, `hinfra.yml` na raiz do projeto para binding explícito (útil em forks).
