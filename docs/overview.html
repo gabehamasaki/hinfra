@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infra hamasakis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#EEF1F5;
+    --surface:#FFFFFF;
+    --surface-2:#F5F7FA;
+    --ink:#151A20;
+    --ink-2:#38434F;
+    --muted:#5C6A78;
+    --line:#D5DCE4;
+    --line-soft:#E4E9EF;
+    --private:#4B4BC8;
+    --private-bg:#E7E7FA;
+    --public:#A9560A;
+    --public-bg:#FBEDDC;
+    --ok:#166F45;
+    --ok-bg:#DEF0E6;
+    --shadow:0 1px 2px rgba(21,26,32,.06), 0 8px 24px -16px rgba(21,26,32,.28);
+    --sans:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+    --cond:"IBM Plex Sans Condensed","IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E1116;
+      --surface:#161B22;
+      --surface-2:#1C222B;
+      --ink:#E5E9EF;
+      --ink-2:#C3CCD7;
+      --muted:#8B98A6;
+      --line:#252C36;
+      --line-soft:#1F252E;
+      --private:#9494F5;
+      --private-bg:#1E1E3A;
+      --public:#E0913D;
+      --public-bg:#33240F;
+      --ok:#4FBF8B;
+      --ok-bg:#102C20;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1116;
+    --surface:#161B22;
+    --surface-2:#1C222B;
+    --ink:#E5E9EF;
+    --ink-2:#C3CCD7;
+    --muted:#8B98A6;
+    --line:#252C36;
+    --line-soft:#1F252E;
+    --private:#9494F5;
+    --private-bg:#1E1E3A;
+    --public:#E0913D;
+    --public-bg:#33240F;
+    --ok:#4FBF8B;
+    --ok-bg:#102C20;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:15px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--private); text-decoration:none}
+  a:hover{text-decoration:underline}
+  a:focus-visible,summary:focus-visible{outline:2px solid var(--private); outline-offset:2px; border-radius:3px}
+
+  .shell{max-width:1180px; margin:0 auto; padding:0 24px 72px; display:grid; grid-template-columns:190px minmax(0,1fr); gap:40px}
+  @media (max-width:900px){ .shell{grid-template-columns:1fr; gap:0} }
+
+  /* ---- rail ---- */
+  .rail{position:sticky; top:0; align-self:start; padding:40px 0; display:flex; flex-direction:column; gap:20px}
+  @media (max-width:900px){ .rail{position:static; padding:24px 0 0} }
+  .rail-mark{font-family:var(--cond); font-weight:700; font-size:17px; letter-spacing:-.01em; line-height:1.15}
+  .rail-mark span{display:block; font-family:var(--mono); font-size:10.5px; font-weight:500; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:5px}
+  .rail nav{display:flex; flex-direction:column; gap:1px; border-left:1px solid var(--line)}
+  .rail nav a{padding:5px 0 5px 12px; margin-left:-1px; border-left:1px solid transparent; color:var(--muted); font-size:13.5px}
+  .rail nav a:hover{color:var(--ink); border-left-color:var(--private); text-decoration:none}
+
+  /* ---- head ---- */
+  header{padding:44px 0 8px}
+  h1{font-family:var(--cond); font-size:clamp(30px,4.2vw,44px); font-weight:700; letter-spacing:-.02em; line-height:1.05; margin:0; text-wrap:balance}
+  .lede{color:var(--ink-2); font-size:17px; margin:14px 0 0; max-width:62ch}
+  .meta{display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:20px; font-family:var(--mono); font-size:12px; color:var(--muted)}
+  .meta b{font-weight:500; color:var(--ink-2)}
+
+  /* ---- stats ---- */
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:32px 0 0}
+  .stat{background:var(--surface); padding:14px 16px}
+  .stat dt{font-family:var(--mono); font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin:0}
+  .stat dd{margin:6px 0 0; font-family:var(--cond); font-size:24px; font-weight:600; letter-spacing:-.01em; font-variant-numeric:tabular-nums}
+  .stat dd small{font-family:var(--mono); font-size:11px; font-weight:400; color:var(--muted); margin-left:3px; letter-spacing:0}
+
+  /* ---- sections ---- */
+  section{padding-top:52px; scroll-margin-top:24px}
+  h2{font-family:var(--cond); font-size:23px; font-weight:600; letter-spacing:-.01em; margin:0 0 4px; text-wrap:balance}
+  .sub{color:var(--muted); font-size:14.5px; margin:0 0 20px; max-width:64ch}
+
+  /* ---- diagram ---- */
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px 8px 8px; overflow-x:auto; box-shadow:var(--shadow)}
+  .diagram svg{display:block; min-width:720px; width:100%; height:auto}
+  .dg-box{fill:var(--surface-2); stroke:var(--line)}
+  .dg-t{font-family:var(--mono); font-size:11.5px; fill:var(--ink); font-weight:500}
+  .dg-s{font-family:var(--mono); font-size:10px; fill:var(--muted)}
+  .dg-lbl{font-family:var(--mono); font-size:9.5px; letter-spacing:.09em; fill:var(--muted)}
+
+  /* ---- layers ---- */
+  .layers{display:flex; flex-direction:column; gap:8px}
+  .layer{display:grid; grid-template-columns:26px 122px minmax(0,1fr) auto; align-items:center; gap:16px;
+         background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--owner); border-radius:8px; padding:13px 16px}
+  .layer[data-owner="ansible"]{--owner:var(--private)}
+  .layer[data-owner="argocd"]{--owner:var(--ok)}
+  .layer .n{font-family:var(--mono); font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .layer .nm{font-family:var(--cond); font-weight:600; font-size:16px}
+  .layer .it{font-family:var(--mono); font-size:11.5px; color:var(--ink-2)}
+  .layer .fq{font-size:12px; color:var(--muted); white-space:nowrap}
+  @media (max-width:760px){ .layer{grid-template-columns:26px 1fr; row-gap:6px} .layer .fq{grid-column:2} }
+
+  /* ---- tables ---- */
+  .tw{overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:8px}
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  th{text-align:left; font-family:var(--mono); font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); font-weight:500; padding:11px 16px; border-bottom:1px solid var(--line); white-space:nowrap}
+  td{padding:11px 16px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  td.m,th.m{font-family:var(--mono); font-size:12px; font-variant-numeric:tabular-nums; white-space:nowrap}
+  td i{font-style:normal; color:var(--muted)}
+  td.nm{font-weight:500; white-space:nowrap}
+
+  .chip{display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10.5px; font-weight:500; letter-spacing:.04em; padding:2px 8px; border-radius:99px; white-space:nowrap}
+  .chip::before{content:""; width:5px; height:5px; border-radius:50%; background:currentColor}
+  .chip.pub{background:var(--public-bg); color:var(--public)}
+  .chip.priv{background:var(--private-bg); color:var(--private)}
+  .chip.int{background:var(--surface-2); color:var(--muted)}
+  .chip.ok{background:var(--ok-bg); color:var(--ok)}
+
+  /* ---- decisions ---- */
+  .decs{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px}
+  .dec{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:15px 17px}
+  .dec h3{margin:0; font-family:var(--cond); font-size:15.5px; font-weight:600}
+  .dec p{margin:7px 0 0; font-size:13.5px; color:var(--ink-2); line-height:1.55}
+
+  /* ---- docs ---- */
+  .docs{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden}
+  .doc{background:var(--surface); padding:14px 17px; display:flex; flex-direction:column; gap:4px}
+  .doc:hover{background:var(--surface-2); text-decoration:none}
+  .doc .n{font-family:var(--mono); font-size:10.5px; color:var(--muted); letter-spacing:.06em}
+  .doc .t{font-family:var(--cond); font-size:16px; font-weight:600; color:var(--ink)}
+  .doc .d{font-size:13px; color:var(--muted); line-height:1.45}
+
+  /* ---- code ---- */
+  pre{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:15px 17px; overflow-x:auto; margin:0;
+      font-family:var(--mono); font-size:12.5px; line-height:1.75; color:var(--ink-2)}
+  pre b{color:var(--ink); font-weight:500}
+  pre i{color:var(--muted); font-style:normal}
+  .cols2{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px}
+
+  .note{border-left:3px solid var(--public); background:var(--surface); border-radius:0 8px 8px 0; padding:13px 17px; font-size:13.5px; color:var(--ink-2)}
+  .note b{color:var(--ink); font-weight:600}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); font-family:var(--mono); font-size:11.5px; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px 20px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="rail">
+    <div class="rail-mark">Infra<br>hamasakis<span>k3s · argocd</span></div>
+    <nav>
+      <a href="#topologia">Topologia</a>
+      <a href="#camadas">Camadas</a>
+      <a href="#stack">Stack</a>
+      <a href="#servicos">Serviços</a>
+      <a href="#decisoes">Decisões</a>
+      <a href="#docs">Documentação</a>
+      <a href="#comandos">Comandos</a>
+    </nav>
+  </aside>
+
+  <main>
+    <header>
+      <h1>Um cluster, duas portas de entrada</h1>
+      <p class="lede">
+        Kubernetes numa VPS de 2 vCPU rodando projetos públicos e um plano de controle que
+        só existe dentro de uma rede privada. Provisionado por Ansible, operado por GitOps,
+        preparado para receber mais servidores sem remontar nada.
+      </p>
+      <div class="meta">
+        <span><b>srv1957194</b> · Hostinger KVM 2</span>
+        <span>Ubuntu <b>24.04.4</b></span>
+        <span>público <b>187.127.62.20</b></span>
+        <span>tailnet <b>100.86.241.1</b></span>
+      </div>
+
+      <dl class="stats">
+        <div class="stat"><dt>CPU</dt><dd>2<small>vCPU</small></dd></div>
+        <div class="stat"><dt>Memória</dt><dd>8<small>GB</small></dd></div>
+        <div class="stat"><dt>Em uso</dt><dd>2,9<small>GB · 36%</small></dd></div>
+        <div class="stat"><dt>Disco</dt><dd>96<small>GB · 5%</small></dd></div>
+        <div class="stat"><dt>Nodes</dt><dd>1<small>+ workers</small></dd></div>
+        <div class="stat"><dt>Applications</dt><dd>5<small>synced</small></dd></div>
+      </dl>
+    </header>
+
+    <section id="topologia">
+      <h2>Topologia</h2>
+      <p class="sub">
+        A mesma instância do Traefik atende as duas interfaces. O que separa público de privado
+        não é a porta — é o IP de origem, filtrado por um middleware, sobre um endereço que
+        simplesmente não é roteável fora da tailnet.
+      </p>
+
+      <div class="diagram">
+        <svg viewBox="0 0 860 330" role="img" aria-label="Diagrama: internet chega por 80 e 443 e alcança apenas hamasakis.dev; a tailnet alcança os consoles e a API do Kubernetes">
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"></path>
+            </marker>
+          </defs>
+
+          <text class="dg-lbl" x="8" y="20">ORIGEM</text>
+          <text class="dg-lbl" x="234" y="20">FIREWALL DO HOST</text>
+          <text class="dg-lbl" x="462" y="20">CLUSTER</text>
+          <text class="dg-lbl" x="676" y="20">ALCANCE</text>
+
+          <!-- lane público -->
+          <rect class="dg-box" x="8" y="40" width="150" height="52" rx="6" stroke-width="1"></rect>
+          <text class="dg-t" x="24" y="62" fill="var(--public)">Internet</text>
+          <text class="dg-s" x="24" y="78">qualquer origem</text>
+
+          <rect class="dg-box" x="234" y="40" width="150" height="52" rx="6" stroke-width="1"></rect>
+          <text class="dg-t" x="250" y="62">eth0</text>
+          <text class="dg-s" x="250" y="78">:22 :80 :443</text>
+
+          <line x1="162" y1="66" x2="228" y2="66" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#ar)"></line>
+          <line x1="388" y1="66" x2="456" y2="66" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#ar)"></line>
+
+          <!-- traefik spanning -->
+          <rect class="dg-box" x="462" y="40" width="150" height="140" rx="6" stroke-width="1"></rect>
+          <text class="dg-t" x="478" y="62">Traefik</text>
+          <text class="dg-s" x="478" y="78">ingress · :443</text>
+          <text class="dg-s" x="478" y="102">middleware</text>
+          <text class="dg-s" x="478" y="116">IPAllowList</text>
+          <text class="dg-s" x="478" y="130" fill="var(--private)">100.64.0.0/10</text>
+          <text class="dg-s" x="478" y="154">TLS pelo</text>
+          <text class="dg-s" x="478" y="168">cert-manager</text>
+
+          <!-- destinos público -->
+          <line x1="616" y1="66" x2="672" y2="66" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#ar)"></line>
+          <rect class="dg-box" x="676" y="40" width="176" height="52" rx="6" stroke-width="1"></rect>
+          <text class="dg-t" x="692" y="62" fill="var(--public)">hamasakis.dev</text>
+          <text class="dg-s" x="692" y="78">projetos · público</text>
+
+          <!-- destino bloqueado -->
+          <line x1="616" y1="128" x2="672" y2="128" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar)"></line>
+          <rect class="dg-box" x="676" y="102" width="176" height="52" rx="6" stroke-width="1" stroke-dasharray="3 3"></rect>
+          <text class="dg-t" x="692" y="124">*.hamasakis.cloud</text>
+          <text class="dg-s" x="692" y="140" fill="var(--public)">403 se vier da internet</text>
+
+          <!-- lane tailnet -->
+          <rect class="dg-box" x="8" y="200" width="150" height="52" rx="6" stroke-width="1"></rect>
+          <text class="dg-t" x="24" y="222" fill="var(--private)">Tailnet</text>
+          <text class="dg-s" x="24" y="238">WireGuard mesh</text>
+
+          <rect class="dg-box" x="234" y="200" width="150" height="52" rx="6" stroke-width="1"></rect>
+          <text class="dg-t" x="250" y="222">tailscale0</text>
+          <text class="dg-s" x="250" y="238">tudo liberado</text>
+
+          <line x1="162" y1="226" x2="228" y2="226" stroke="var(--private)" stroke-width="1.2" marker-end="url(#ar)"></line>
+          <path d="M388,226 L424,226 L424,150 L456,150" fill="none" stroke="var(--private)" stroke-width="1.2" marker-end="url(#ar)"></path>
+          <line x1="388" y1="240" x2="456" y2="278" stroke="var(--private)" stroke-width="1.2" marker-end="url(#ar)"></line>
+
+          <rect class="dg-box" x="462" y="256" width="150" height="52" rx="6" stroke-width="1"></rect>
+          <text class="dg-t" x="478" y="278">API do k3s</text>
+          <text class="dg-s" x="478" y="294">:6443 · kubectl</text>
+
+          <line x1="616" y1="170" x2="672" y2="190" stroke="var(--private)" stroke-width="1.2" marker-end="url(#ar)"></line>
+          <rect class="dg-box" x="676" y="164" width="176" height="52" rx="6" stroke-width="1"></rect>
+          <text class="dg-t" x="692" y="186" fill="var(--private)">argocd · s3</text>
+          <text class="dg-s" x="692" y="202">consoles · só tailnet</text>
+        </svg>
+      </div>
+    </section>
+
+    <section id="camadas">
+      <h2>As quatro camadas</h2>
+      <p class="sub">
+        A linha que separa as camadas é a frequência de mudança. Isso define quem manda em cada
+        uma: o que raramente muda é imperativo e roda uma vez; o que muda toda hora vive no Git.
+      </p>
+      <div class="layers">
+        <div class="layer" data-owner="ansible">
+          <span class="n">01</span><span class="nm">Provisionamento</span>
+          <span class="it">hardening · deploy · Tailscale · k3s · backup</span>
+          <span class="fq">Ansible · 1× por servidor</span>
+        </div>
+        <div class="layer" data-owner="ansible">
+          <span class="n">02</span><span class="nm">Plataforma</span>
+          <span class="it">cert-manager · Sealed Secrets · ArgoCD · KEDA · CNPG</span>
+          <span class="fq">Ansible + Helm · raro</span>
+        </div>
+        <div class="layer" data-owner="argocd">
+          <span class="n">03</span><span class="nm">Serviços de dados</span>
+          <span class="it">Postgres · Valkey · RustFS</span>
+          <span class="fq">ArgoCD · eventual</span>
+        </div>
+        <div class="layer" data-owner="argocd">
+          <span class="n">04</span><span class="nm">Projetos</span>
+          <span class="it">my-portfolio · próximos</span>
+          <span class="fq">ArgoCD · a cada push</span>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:16px">
+        O ArgoCD não gerencia as camadas 1 e 2 por dependência circular: ele precisa do
+        cert-manager para o próprio certificado e do repositório para saber o que aplicar.
+        Componente que o ArgoCD precisa para funcionar não pode depender dele para existir.
+      </p>
+    </section>
+
+    <section id="stack">
+      <h2>Stack</h2>
+      <p class="sub">Versões em produção hoje.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Componente</th><th>Versão</th><th>Papel</th><th>Instalado por</th></tr></thead>
+          <tbody>
+            <tr><td class="nm">k3s</td><td class="m">v1.36.4+k3s1</td><td>Kubernetes, node único</td><td class="m">Ansible</td></tr>
+            <tr><td class="nm">Traefik</td><td class="m">v3.7.1</td><td>Ingress, embutido no k3s</td><td class="m">k3s</td></tr>
+            <tr><td class="nm">Tailscale</td><td class="m">—</td><td>Mesh WireGuard entre servidores</td><td class="m">Ansible</td></tr>
+            <tr><td class="nm">cert-manager</td><td class="m">v1.21.1</td><td>TLS via Let's Encrypt DNS-01</td><td class="m">Ansible</td></tr>
+            <tr><td class="nm">Sealed Secrets</td><td class="m">0.39.1</td><td>Segredos criptografados no Git</td><td class="m">Ansible</td></tr>
+            <tr><td class="nm">ArgoCD</td><td class="m">v3.5.2</td><td>GitOps, App of Apps</td><td class="m">Ansible</td></tr>
+            <tr><td class="nm">KEDA</td><td class="m">2.20.2</td><td>Autoscaling, escala por horário</td><td class="m">Ansible</td></tr>
+            <tr><td class="nm">CloudNativePG</td><td class="m">1.30.0</td><td>Operador do Postgres</td><td class="m">Ansible</td></tr>
+            <tr><td class="nm">Valkey</td><td class="m">chart 0.12.0</td><td>Cache, API do Redis</td><td class="m">ArgoCD</td></tr>
+            <tr><td class="nm">RustFS</td><td class="m">1.0.0-rc.5</td><td>Object storage S3</td><td class="m">ArgoCD</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="servicos">
+      <h2>Serviços e endereços</h2>
+      <p class="sub">
+        Serviços de dados são compartilhados: cada projeto ganha seu banco, seu prefixo de chaves
+        e seu bucket dentro da mesma instância.
+      </p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Endereço</th><th>Alcance</th><th>O que é</th><th>Escala com workers</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="m">hamasakis.dev</td>
+              <td><span class="chip pub">público</span></td>
+              <td>Portfólio</td><td class="m">replicas</td>
+            </tr>
+            <tr>
+              <td class="m">argocd.hamasakis.cloud</td>
+              <td><span class="chip priv">tailnet</span></td>
+              <td>Console do ArgoCD</td><td class="m">—</td>
+            </tr>
+            <tr>
+              <td class="m">s3.hamasakis.cloud</td>
+              <td><span class="chip priv">tailnet</span></td>
+              <td>Console do RustFS</td><td class="m">mode.distributed</td>
+            </tr>
+            <tr>
+              <td class="m">postgres-rw.postgres<i>…</i>:5432</td>
+              <td><span class="chip int">cluster</span></td>
+              <td>Postgres, escrita</td><td class="m">instances: 1 → 3</td>
+            </tr>
+            <tr>
+              <td class="m">valkey.valkey<i>…</i>:6379</td>
+              <td><span class="chip int">cluster</span></td>
+              <td>Valkey</td><td class="m">replica.enabled</td>
+            </tr>
+            <tr>
+              <td class="m">rustfs-svc.rustfs<i>…</i>:9000</td>
+              <td><span class="chip int">cluster</span></td>
+              <td>API S3</td><td class="m">mode.distributed</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="sub" style="margin-top:14px">
+        Todos os três foram escolhidos por um critério explícito: sair de instância única para
+        replicado é mudar um campo, não remontar a arquitetura.
+      </p>
+    </section>
+
+    <section id="decisoes">
+      <h2>Decisões</h2>
+      <p class="sub">As escolhas que moldaram o resto, e o motivo de cada uma.</p>
+      <div class="decs">
+        <div class="dec">
+          <h3>k3s, não kubeadm</h3>
+          <p>2 vCPU não comportam um control plane completo. O k3s traz Traefik, storage e
+             containerd num binário só.</p>
+        </div>
+        <div class="dec">
+          <h3>API do Kubernetes fora da internet</h3>
+          <p>A porta 6443 só escuta na interface da tailnet. Workers futuros entram por uma rede
+             privada que independe do provedor.</p>
+        </div>
+        <div class="dec">
+          <h3>DNS-01, não HTTP-01</h3>
+          <p>Não depende da porta 80 nem de o host ser alcançável. É o que permite certificado
+             válido para serviços que só existem na tailnet.</p>
+        </div>
+        <div class="dec">
+          <h3>O CI escreve no Git, não no cluster</h3>
+          <p>Nenhuma credencial de cluster no GitHub. O pior caso de um token vazado é um commit
+             revertível.</p>
+        </div>
+        <div class="dec">
+          <h3>Instâncias compartilhadas</h3>
+          <p>Uma instância por projeto multiplicaria a RAM a cada projeto. Compartilhado, cada um
+             ganha seu espaço dentro da mesma instância.</p>
+        </div>
+        <div class="dec">
+          <h3>Valkey, não Redis</h3>
+          <p>Os charts do Bitnami estão migrando para um repositório pago. O Valkey é o fork
+             open-source, com a mesma API.</p>
+        </div>
+        <div class="dec">
+          <h3>Sem Kafka</h3>
+          <p>Um broker JVM pediria ~1,5 GB de heap — quase um quinto da máquina, disputando com
+             todo o resto. Fica para quando houver hardware.</p>
+        </div>
+        <div class="dec">
+          <h3>Root fora do dia a dia</h3>
+          <p>Acesso por um usuário dedicado, com chave própria. Login root pela rede está
+             desabilitado, e o gate de validação impede lockout.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="docs">
+      <h2>Documentação</h2>
+      <p class="sub">Onze documentos, do provisionamento aos problemas reais já enfrentados.</p>
+      <div class="docs">
+        <a class="doc" href="01-arquitetura.md"><span class="n">01</span><span class="t">Arquitetura</span><span class="d">As camadas e o porquê de cada decisão estrutural</span></a>
+        <a class="doc" href="02-servidor-e-acesso.md"><span class="n">02</span><span class="t">Servidor e acesso</span><span class="d">VPS, usuário deploy, SSH, firewall, Tailscale, DNS</span></a>
+        <a class="doc" href="03-kubernetes.md"><span class="n">03</span><span class="t">Kubernetes</span><span class="d">k3s, storage, backup do datastore, adicionar workers</span></a>
+        <a class="doc" href="04-ansible.md"><span class="n">04</span><span class="t">Ansible</span><span class="d">Roles, inventário, como rodar, detalhes não óbvios</span></a>
+        <a class="doc" href="05-segredos.md"><span class="n">05</span><span class="t">Segredos</span><span class="d">Vault, Sealed Secrets, inventário de credenciais</span></a>
+        <a class="doc" href="06-tls-e-ingress.md"><span class="n">06</span><span class="t">TLS e Ingress</span><span class="d">cert-manager, Traefik, restrição por tailnet</span></a>
+        <a class="doc" href="07-argocd-gitops.md"><span class="n">07</span><span class="t">ArgoCD e GitOps</span><span class="d">App of Apps, divisão Ansible × ArgoCD, acesso</span></a>
+        <a class="doc" href="08-data-services.md"><span class="n">08</span><span class="t">Serviços de dados</span><span class="d">Postgres, Valkey, RustFS, KEDA</span></a>
+        <a class="doc" href="09-cicd.md"><span class="n">09</span><span class="t">CI/CD</span><span class="d">GitHub Actions, GHCR, onboarding de projeto</span></a>
+        <a class="doc" href="10-runbooks.md"><span class="n">10</span><span class="t">Runbooks</span><span class="d">Operações do dia a dia, passo a passo</span></a>
+        <a class="doc" href="11-armadilhas.md"><span class="n">11</span><span class="t">Armadilhas</span><span class="d">Problemas reais, causa e correção</span></a>
+      </div>
+    </section>
+
+    <section id="comandos">
+      <h2>Referência rápida</h2>
+      <p class="sub">O suficiente para começar a operar.</p>
+      <div class="cols2">
+<pre><i># acesso</i>
+<b>ssh vps</b>                      <i># deploy, root fechado</i>
+<b>tailscale up</b>
+export KUBECONFIG=.secrets/vps-1.kubeconfig
+
+<i># saúde</i>
+kubectl get nodes
+kubectl get applications -n argocd
+kubectl get pods -A | grep -v Running
+kubectl top nodes</pre>
+<pre><i># provisionar (idempotente)</i>
+cd ansible
+<b>ansible-playbook -i inventory/hosts.ini site.yml \
+  --private-key ../.secrets/vps-1_deploy_ed25519</b>
+
+<i># forçar sync do ArgoCD</i>
+kubectl annotate application root-app -n argocd \
+  argocd.argoproj.io/refresh=hard --overwrite</pre>
+      </div>
+      <p class="note" style="margin-top:14px">
+        <b>Deploy leva até ~3 min.</b> Não há webhook — o ArgoCD é privado e o GitHub não alcança
+        um endpoint dentro da tailnet. O sync é por polling, e essa foi uma troca consciente:
+        manter o plano de controle fora da internet vale mais que instantaneidade no deploy.
+      </p>
+    </section>
+
+    <footer>
+      <span>github.com/gabehamasaki/infra</span>
+      <span>hamasakis.cloud · plataforma</span>
+      <span>hamasakis.dev · projetos</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

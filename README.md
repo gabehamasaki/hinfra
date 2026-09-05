@@ -2,6 +2,9 @@
 
 Repositório único de provisionamento (Ansible) + GitOps (ArgoCD) da infraestrutura em `hamasakis.cloud` / `hamasakis.dev`.
 
+> **Documentação completa em [`docs/`](docs/)** — arquitetura, runbooks, e as armadilhas já enfrentadas.
+> Para um resumo visual, abra [`docs/overview.html`](docs/overview.html) no navegador.
+
 ## Visão geral
 
 - **Provisionamento** (`ansible/`): prepara qualquer VPS nova do zero — usuário não-root, Tailscale, k3s, e os componentes de plataforma (Sealed Secrets, cert-manager, ArgoCD). Roda uma vez por servidor.
