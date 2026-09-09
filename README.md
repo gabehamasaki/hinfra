@@ -24,7 +24,7 @@ platform/
 apps/
   <projeto>/          manifests do projeto (deployment/service/ingress/kustomization)
 tools/
-  mcp/                infra-mcp — servidor MCP local (não roda no cluster)
+  hinfra/             CLI + TUI + MCP local (não roda no cluster)
 ```
 
 ## Preparar sua máquina local
@@ -56,26 +56,23 @@ ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --limit <host>
 
 Pra adicionar um worker: acrescente o host em `ansible/inventory/hosts.ini` sob `[k3s_agents]` e rode os dois comandos acima com `--limit` nesse host.
 
-## MCP local (`infra-mcp`)
+## `hinfra` (CLI, TUI e MCP)
 
-Ferramenta de desenvolvimento que roda na sua máquina — dá ao agente, de dentro de qualquer repo de projeto, diagnóstico de deploy, leitura do cluster e scaffold de CI/CD. **Não é camada da infra** (não roda na VPS nem no ArgoCD). Detalhes em [`docs/12-mcp.md`](docs/12-mcp.md).
+Ferramenta local: TUI para visão do cluster, CLI para scripts, MCP para coding agents. **Não é camada da infra.** Detalhes em [`docs/12-mcp.md`](docs/12-mcp.md).
 
 ```bash
-# config (uma vez por máquina)
-mkdir -p ~/.config/infra-mcp
-echo 'infraRepo: /caminho/para/este/repo' > ~/.config/infra-mcp/config.yaml
-
-make -C tools/mcp install
-infra-mcp --selftest
-claude mcp add --scope user infra -- ~/.local/bin/infra-mcp   # Claude Code
-# Cursor: ~/.cursor/mcp.json com command apontando para ~/.local/bin/infra-mcp (ver docs/12-mcp.md)
+hinfra init --machine          # setup ~/.config/hinfra
+make -C tools/hinfra install
+hinfra doctor
+hinfra mcp install             # Cursor, Claude, Codex, OpenCode
+hinfra                         # abre TUI
 ```
 
-No repo de um projeto: `deploy_status`, `app_health`, `scaffold_workflow`, etc. Opcionalmente, `hinfra.yml` na raiz do projeto para binding explícito — essencial em forks e monorepos (api + web).
+No repo de um projeto: `hinfra init` ou MCP tools (`deploy_status`, `app_health`, etc.). `hinfra.yml` na raiz para binding explícito.
 
 ## Registrar um projeto novo
 
-Com o MCP instalado, use `scaffold_app` e `scaffold_workflow` (ver [`docs/12-mcp.md`](docs/12-mcp.md)). Manualmente:
+Prefira `hinfra init` no repo do projeto. Com MCP: `scaffold_app` e `scaffold_workflow` (ver [`docs/12-mcp.md`](docs/12-mcp.md)). Manualmente:
 
 1. Criar `apps/<projeto>/` com `deployment.yaml`, `service.yaml`, `ingress.yaml`, `kustomization.yaml` (copiar de `apps/my-portfolio/` como referência).
 2. Criar `clusters/production/apps/<projeto>-app.yaml` (Application do ArgoCD apontando pra `apps/<projeto>`).

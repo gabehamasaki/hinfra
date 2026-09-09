@@ -24,9 +24,11 @@ Não há webhook: o ArgoCD só existe dentro da tailnet e o GitHub não a alcan�
 kubectl annotate application root-app -n argocd argocd.argoproj.io/refresh=hard --overwrite
 ```
 
-## MCP (`infra-mcp`)
+## `hinfra` (preferido)
 
-Com o servidor MCP instalado (ver [`docs/12-mcp.md`](../../../docs/12-mcp.md)), use as ferramentas em vez de copiar arquivos manualmente:
+No repo do projeto, rode `hinfra init` para gerar `hinfra.yml`, workflow e manifestos no infra com preview.
+
+Com MCP instalado (`hinfra mcp install`, ver [`docs/12-mcp.md`](../../../docs/12-mcp.md)), use as ferramentas em vez de copiar arquivos manualmente:
 
 | Passo | Ferramenta MCP |
 | --- | --- |

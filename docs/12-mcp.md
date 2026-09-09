@@ -1,48 +1,83 @@
-# 12 — MCP local (`infra-mcp`)
+# 12 — `hinfra` (CLI, TUI e MCP)
 
-Servidor MCP em Go que roda na sua máquina (stdio) e dá ao agente — de dentro de qualquer repo de projeto — leitura do cluster, ações limitadas no próprio app, scaffold de CI/CD e acesso aos docs da infra.
+Ferramenta Go local que roda na sua máquina: **TUI** para visão do cluster, **CLI** para scripts, e **MCP** para coding agents (Cursor, Claude, Codex, OpenCode).
 
-**Não é uma camada da infra.** Não roda na VPS, não consome CPU do cluster, não entra no ArgoCD. É ferramenta de desenvolvimento local em [`tools/mcp/`](../tools/mcp/).
+**Não é uma camada da infra.** Não roda na VPS, não consome CPU do cluster, não entra no ArgoCD. Código em [`tools/hinfra/`](../tools/hinfra/).
 
 ## Instalação
 
 ```bash
-# config obrigatória (uma vez por máquina)
-mkdir -p ~/.config/infra-mcp
-cat > ~/.config/infra-mcp/config.yaml <<EOF
+# setup da máquina (interativo)
+hinfra init --machine
+
+# ou manual:
+mkdir -p ~/.config/hinfra
+cat > ~/.config/hinfra/config.yaml <<EOF
 infraRepo: /home/hamasaki/www/infra
 EOF
 
-# build e instalação
-make -C tools/mcp install
+make -C tools/hinfra install
+hinfra doctor
 
-# validar config, kubeconfig e tailnet
-infra-mcp --selftest
-
-# Claude Code (escopo user — disponível em todo repo)
-claude mcp add --scope user infra -- ~/.local/bin/infra-mcp
-
-# Cursor (escopo global — disponível em todo repo)
-# ~/.cursor/mcp.json:
-#   { "mcpServers": { "infra": { "command": "/home/hamasaki/.local/bin/infra-mcp" } } }
-# Depois: Settings → MCP → confirmar "infra" conectado (toggle para ligar/desligar quando precisar)
+# registrar MCP nos agents (wizard multi-agent)
+hinfra mcp install
+# ou: hinfra mcp install --cursor --codex --all
 ```
 
-O kubeconfig é derivado automaticamente de `<infraRepo>/.secrets/vps-1.kubeconfig`. Toda ferramenta que toca o cluster exige estar na tailnet; fora dela, o erro é explícito em ~2s: `não estou na tailnet — rode tailscale up`.
+Config legada `~/.config/infra-mcp/config.yaml` ainda funciona com aviso — migre para `~/.config/hinfra/`.
+
+O kubeconfig é derivado de `<infraRepo>/.secrets/vps-1.kubeconfig`. Operações no cluster exigem tailnet (`tailscale up`).
+
+## Uso
+
+| Comando | O que faz |
+| --- | --- |
+| `hinfra` | Abre a TUI (se terminal interativo) |
+| `hinfra tui` | TUI explícita |
+| `hinfra doctor` | Valida config + kubeconfig + tailnet |
+| `hinfra smoke` | Smoke test das tools de leitura no cwd |
+| `hinfra init` | Onboarding de projeto (hinfra.yml, workflow, manifestos) |
+| `hinfra mcp` | Servidor MCP stdio |
+| `hinfra mcp install` | Registra MCP nos coding agents |
+
+### CLI (exemplos)
+
+```bash
+hinfra deploy status [--app]
+hinfra health [--app]
+hinfra logs [--app] [--pod] [--tail 100] [--previous]
+hinfra docs search targetRevision
+hinfra restart [--app]
+hinfra argocd refresh [--app]
+hinfra rollback [--app] --confirm
+hinfra scaffold app --name my-app --host my-app.hamasakis.dev [--write]
+hinfra scaffold workflow [--app] [--write]
+```
+
+Flag global `--json` em todos os comandos.
+
+## MCP nos agents
+
+`hinfra mcp install` suporta:
+
+| Agent | Config |
+| --- | --- |
+| Cursor | `~/.cursor/mcp.json` |
+| Claude Code | `claude mcp add --scope user infra -- <bin> mcp` |
+| Codex | `~/.codex/config.toml` |
+| OpenCode | `~/.config/opencode/opencode.json` |
+
+Entrada comum: `command: hinfra`, `args: ["mcp"]`.
 
 ## Descoberta de contexto
 
-Com o cwd num repo de projeto, o servidor descobre qual app corresponde:
+Com o cwd num repo de projeto:
 
-1. `hinfra.yml` na raiz do repo (opcional) — binding explícito
+1. `hinfra.yml` na raiz (opcional)
 2. `remote origin` → `owner/repo`
-3. Validação cruzada com `apps/<app>/kustomization.yaml` no repo infra
+3. Validação com `apps/<app>/kustomization.yaml` no repo infra
 
-Se as pistas discordarem, a ferramenta **não adivinha** — pede confirmação ou parâmetro `app` explícito.
-
-### `hinfra.yml` (opcional)
-
-Formato simples (um serviço):
+### `hinfra.yml`
 
 ```yaml
 app: my-portfolio
@@ -50,73 +85,90 @@ image: gabehamasaki/my-portfolio
 appPath: apps/my-portfolio
 namespace: my-portfolio
 host: hamasakis.dev
-exposure: public   # ou tailnet
-```
-
-Formato monorepo (várias imagens, ex. api + web):
-
-```yaml
-app: my-app
-host: my-app.hamasakis.dev
 exposure: public
-appPath: apps/my-app
-namespace: my-app
-images:
-  api: gabehamasaki/my-app-api
-  web: gabehamasaki/my-app-web
-routing:
-  apiPath: /api
-  webPath: /
 ```
 
-Útil para forks, monorepos ou nomes de imagem que não seguem o basename do repo. O campo `image` (singular) continua válido para projetos de imagem única. O `scaffold_workflow` com `write: true` pode gerar este arquivo junto com o workflow.
+Monorepo (api + web): ver skill `novo-projeto`. `hinfra init` gera este arquivo.
 
-## Ferramentas (9)
+## Ferramentas MCP (9)
 
-### Leitura
-
-| Ferramenta | O que faz |
+| Ferramenta | Tipo |
 | --- | --- |
-| `deploy_status` | Encadeia 4 elos: SHA em `origin/main`, bump no infra, Application Synced/Healthy, imagem no pod |
-| `app_health` | Pods, restarts, imagem em execução e events do namespace |
-| `app_logs` | Logs com `previous: true` para CrashLoopBackOff |
-| `infra_docs` | `search` ou `read` em `docs/` do repo infra |
+| `deploy_status` | leitura |
+| `app_health` | leitura |
+| `app_logs` | leitura |
+| `infra_docs` | leitura |
+| `app_restart` | mutação |
+| `argocd_refresh` | mutação |
+| `rollback` | mutação (`confirm: true`) |
+| `scaffold_app` | scaffold |
+| `scaffold_workflow` | scaffold |
 
-### Mutação
+## TUI
 
-| Ferramenta | O que faz |
+`hinfra` sem argumentos abre um dashboard de consumo do node, com gráficos de área para histórico e gauges para ocupação atual.
+
+### Scenes
+
+| Tecla | Scene | Conteúdo |
+| --- | --- | --- |
+| `1` | dashboard | CPU, memória, disco e rede do node; top pods; resumo dos Applications |
+| `2` | nodes | detalhe por node: capacity, uptime, kubelet, histórico de CPU e memória |
+| `3` | storage | uso do disco decomposto (imagens / resto / livre) e PVCs por tamanho |
+| `4` | apps | Applications do ArgoCD, filtráveis por camada e por nome |
+
+Dentro de um app: `enter` detalhe, `l` logs, `d` pipeline de deploy, `a` refresh hard, `g` pula para o app do diretório atual. Na scene de nodes, `n` passa para o próximo node.
+
+Globais: `r` recarrega, `w` alterna o watch, `?` ajuda, `q` sai. Mutações destrutivas (restart, rollback) ficam só na CLI.
+
+O **watch já começa ligado** e recarrega a cada 5s. Um dashboard de consumo com números congelados engana mais do que informa, e é o watch que alimenta o histórico dos gráficos de área — sem ele as séries nunca saem de "acumulando histórico".
+
+### Uso × requests
+
+Cada gauge de CPU e memória mostra **duas** séries: `█` é o uso instantâneo do metrics-server e `▒` são os requests reservados. Nesta VPS o orçamento de requests satura muito antes do uso real (hoje ~42% de CPU reservada contra ~9% em uso), então decidir capacidade pelo uso instantâneo leva a pods `Pending` sem aviso. É por isso que as duas séries dividem a mesma barra.
+
+### Layout adaptativo
+
+Acima de 100 colunas os painéis vão numa grade 2×2 com gráficos; abaixo disso vira um painel compacto só de gauges, porque quatro painéis nessa largura truncariam os números.
+
+Na vertical, **nenhum painel é escondido por falta de espaço**. A altura do terminal só decide o tamanho dos gráficos (entre 3 e 8 linhas); o que ainda assim não couber fica acessível por rolagem — `j`/`k` linha a linha, `pgup`/`pgdn` ou `ctrl+u`/`ctrl+d` meia tela, `home`/`end` para os extremos. O indicador `↕` no canto direito do rodapé aparece só quando há conteúdo fora da tela e mostra a posição.
+
+Isso substituiu uma versão que omitia painéis inteiros quando não cabiam: o resultado era informação sumindo em silêncio, sem nada na tela indicando que existia. Rolar é pior que ver tudo de uma vez, mas é muito melhor que não saber o que está faltando.
+
+Barra de status e rodapé também se ajustam à largura, descartando os itens menos importantes (versão do kubelet e uptime na barra; dicas da scene no rodapé). Se qualquer uma dessas linhas quebrasse, roubaria uma linha do corpo e empurraria o topo para fora da tela.
+
+### Fontes das métricas
+
+Três APIs, porque nenhuma entrega tudo:
+
+| Dado | Origem |
 | --- | --- |
-| `app_restart` | Rollout restart — só namespaces com diretório em `apps/` |
-| `argocd_refresh` | Refresh hard no Application correto (`root-app` para Helm) |
-| `rollback` | Commit pra frente com `kustomize edit set image` — exige `confirm: true` |
+| CPU e memória em uso | `metrics.k8s.io/v1beta1` (metrics-server) |
+| capacity, allocatable, conditions | API core (`/api/v1/nodes`) |
+| uso real de disco, rede, uptime | summary API do kubelet (`/api/v1/nodes/<node>/proxy/stats/summary`) |
+| requests reservados | soma dos requests dos pods agendados e não terminados |
 
-### Scaffold
+Falha parcial degrada o painel em vez de derrubá-lo: sem a summary API o disco fica sem uso real, mas CPU, memória e requests continuam corretos.
 
-| Ferramenta | O que faz |
-| --- | --- |
-| `scaffold_app` | Gera manifestos no repo infra (`write: false` por padrão) |
-| `scaffold_workflow` | Gera workflow + `hinfra.yml` no repo do projeto (template single ou monorepo conforme `hinfra.yml`) |
+O histórico dos gráficos é um ring buffer em memória, preenchido a cada coleta — abrir a TUI mostra `acumulando histórico...` até haver amostras suficientes, e nada é persistido entre execuções.
 
-`scaffold_app` e `scaffold_workflow` nunca sobrescrevem arquivos existentes — mostram diff.
+Os mesmos dados saem na CLI com `hinfra metrics` (e `--json` para script).
 
-## Smoke test manual
+## Migração de `infra-mcp`
 
 ```bash
-tailscale status
-infra-mcp --selftest
-
-# no repo de um projeto:
-# deploy_status, app_health, app_logs
-# scaffold_workflow com write:false
+make -C tools/hinfra install
+mv ~/.config/infra-mcp ~/.config/hinfra   # opcional
+hinfra mcp install --all
+hinfra doctor
+rm ~/.local/bin/infra-mcp                 # binário antigo
 ```
 
-## Segurança (honesta)
+## Segurança
 
-O kubeconfig em `.secrets/` é cluster-admin. A restrição de `app_restart` a namespaces de `apps/` é **fronteira de API**, não autorização — protege contra engano do agente, não contra atacante. Quem roda o binário pode usar `kubectl` com o mesmo arquivo.
+O kubeconfig em `.secrets/` é cluster-admin. O MCP **não manipula segredos** — para `INFRA_REPO_TOKEN`, imprime `gh secret set`.
 
-O MCP **não manipula segredos** — nem PAT, nem Secret do Kubernetes. Para `INFRA_REPO_TOKEN`, imprime o comando `gh secret set` e o resto é manual.
-
-## O que o MCP não faz
+## O que não faz
 
 - `kubectl apply`, `delete`, `exec`
 - Leitura de Secrets do cluster
