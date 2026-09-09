@@ -30,11 +30,40 @@ func NewClient(cfg *rest.Config) (*Client, error) {
 	return &Client{dynamic: d}, nil
 }
 
+type Layer string
+
+const (
+	LayerProjects Layer = "projects"
+	LayerData     Layer = "data"
+	LayerPlatform Layer = "platform"
+)
+
 type ApplicationStatus struct {
 	Name     string
 	Sync     string
 	Health   string
 	Revision string
+}
+
+type ApplicationRow struct {
+	Name       string
+	Sync       string
+	Health     string
+	Revision   string
+	SourcePath string
+	HasChart   bool
+	Layer      Layer
+	Namespace  string
+}
+
+func InferLayer(sourcePath string, hasChart bool) Layer {
+	if strings.HasPrefix(sourcePath, "apps/") {
+		return LayerProjects
+	}
+	if strings.HasPrefix(sourcePath, "data-services/") || hasChart {
+		return LayerData
+	}
+	return LayerPlatform
 }
 
 func (c *Client) GetApplication(ctx context.Context, name string) (*ApplicationStatus, error) {
@@ -92,6 +121,36 @@ func (c *Client) SourcePath(ctx context.Context, name string) (string, bool, err
 
 func (c *Client) AnnotateRefreshHard(ctx context.Context, name string) error {
 	return c.Refresh(ctx, name)
+}
+
+func (c *Client) ListApplications(ctx context.Context) ([]ApplicationRow, error) {
+	list, err := c.dynamic.Resource(applicationGVR).Namespace("argocd").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]ApplicationRow, 0, len(list.Items))
+	for _, obj := range list.Items {
+		name := obj.GetName()
+		path, _, _ := unstructured.NestedString(obj.Object, "spec", "source", "path")
+		chart, _, _ := unstructured.NestedString(obj.Object, "spec", "source", "chart")
+		hasChart := chart != ""
+		ns, _, _ := unstructured.NestedString(obj.Object, "spec", "destination", "namespace")
+		row := ApplicationRow{
+			Name: name, SourcePath: path, HasChart: hasChart,
+			Layer: InferLayer(path, hasChart), Namespace: ns,
+		}
+		if sync, ok, _ := unstructured.NestedString(obj.Object, "status", "sync", "status"); ok {
+			row.Sync = sync
+		}
+		if health, ok, _ := unstructured.NestedString(obj.Object, "status", "health", "status"); ok {
+			row.Health = health
+		}
+		if rev, ok, _ := unstructured.NestedString(obj.Object, "status", "sync", "revision"); ok {
+			row.Revision = rev
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
 }
 
 func FormatAppStatus(s *ApplicationStatus) string {
