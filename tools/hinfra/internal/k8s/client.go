@@ -17,6 +17,9 @@ const dialTimeout = 2 * time.Second
 type Client struct {
 	Clientset kubernetes.Interface
 	Config    *rest.Config
+	// Raw atende caminhos de API sem cliente tipado (metrics, summary do kubelet).
+	// Preenchido sob demanda a partir de Config, ou injetado em teste.
+	Raw RawGetter
 }
 
 func NewClient(ctx context.Context, kubeconfig, tailnetAPI string) (*Client, error) {
@@ -101,7 +104,7 @@ func RestartDeployment(ctx context.Context, c *Client, namespace, name string) e
 	if dep.Spec.Template.Annotations == nil {
 		dep.Spec.Template.Annotations = map[string]string{}
 	}
-	dep.Spec.Template.Annotations["infra-mcp/restartedAt"] = time.Now().UTC().Format(time.RFC3339)
+	dep.Spec.Template.Annotations["hinfra/restartedAt"] = time.Now().UTC().Format(time.RFC3339)
 	_, err = c.Clientset.AppsV1().Deployments(namespace).Update(ctx, dep, metav1.UpdateOptions{})
 	return err
 }
