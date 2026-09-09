@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/gabehamasaki/infra/tools/mcp/internal/tailnet"
+	"github.com/gabehamasaki/infra/tools/hinfra/internal/tailnet"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	appctx "github.com/gabehamasaki/infra/tools/mcp/internal/context"
+	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
 )
 
 func TestRenderWorkflow(t *testing.T) {

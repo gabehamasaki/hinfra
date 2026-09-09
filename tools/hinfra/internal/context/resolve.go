@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gabehamasaki/infra/tools/mcp/internal/git"
+	"github.com/gabehamasaki/infra/tools/hinfra/internal/git"
 	"gopkg.in/yaml.v3"
 )
 

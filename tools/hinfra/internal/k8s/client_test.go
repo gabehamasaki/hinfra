@@ -17,7 +17,7 @@ func TestListPodsAndRestart(t *testing.T) {
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "demo"}},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": "demo"}},
-				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "demo", Image: "ghcr.io/gabehamasaki/demo:abc"}}},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "demo", Image: "ghcr.io/gabehamasaki/demo:abc"}}},
 			},
 		},
 	}
@@ -27,7 +27,7 @@ func TestListPodsAndRestart(t *testing.T) {
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{{
 				RestartCount: 2,
-				State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ImagePullBackOff"}},
+				State:        corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ImagePullBackOff"}},
 			}},
 		},
 		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "demo", Image: "ghcr.io/gabehamasaki/demo:abc"}}},

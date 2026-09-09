@@ -24,17 +24,29 @@ type Runtime struct {
 }
 
 func ConfigPath() string {
+	if override := os.Getenv("HINFRA_CONFIG"); override != "" {
+		return override
+	}
 	if override := os.Getenv("INFRA_MCP_CONFIG"); override != "" {
 		return override
 	}
-	return filepath.Join(os.Getenv("HOME"), ".config", "infra-mcp", "config.yaml")
+	newPath := filepath.Join(os.Getenv("HOME"), ".config", "hinfra", "config.yaml")
+	if _, err := os.Stat(newPath); err == nil {
+		return newPath
+	}
+	legacy := filepath.Join(os.Getenv("HOME"), ".config", "infra-mcp", "config.yaml")
+	if _, err := os.Stat(legacy); err == nil {
+		fmt.Fprintln(os.Stderr, "aviso: usando config legada em ~/.config/infra-mcp — migre para ~/.config/hinfra")
+		return legacy
+	}
+	return newPath
 }
 
 func Load() (*Runtime, error) {
 	path := ConfigPath()
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("config obrigatória em %s: %w (crie com infraRepo: /caminho/para/infra)", path, err)
+		return nil, fmt.Errorf("config obrigatória em %s: %w (crie com infraRepo: /caminho/para/infra ou rode hinfra init --machine)", path, err)
 	}
 
 	var cfg Config
@@ -55,6 +67,20 @@ func Load() (*Runtime, error) {
 		Kubeconfig: filepath.Join(infraRepo, ".secrets", KubeconfigName),
 		TailnetAPI: DefaultTailnetAPI,
 	}, nil
+}
+
+func Save(infraRepo string) error {
+	dir := filepath.Join(os.Getenv("HOME"), ".config", "hinfra")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	path := filepath.Join(dir, "config.yaml")
+	cfg := Config{InfraRepo: infraRepo}
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
 }
 
 func (r *Runtime) ValidateFiles() error {

@@ -1,4 +1,4 @@
-package server
+package mcp
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	appctx "github.com/gabehamasaki/infra/tools/mcp/internal/context"
+	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
 )
 
 func RunSmoke(ctx context.Context, env *Env) error {
@@ -15,27 +15,22 @@ func RunSmoke(ctx context.Context, env *Env) error {
 		fn   func() (interface{}, error)
 	}{
 		{"context", func() (interface{}, error) {
-			return resolveApp(env, "")
+			return actions.ResolveApp(env, "")
 		}},
 		{"deploy_status", func() (interface{}, error) {
-			_, out, err := deployStatusHandler(env)(ctx, nil, deployStatusInput{})
-			return out, err
+			return actions.DeployStatus(ctx, env, "")
 		}},
 		{"app_health", func() (interface{}, error) {
-			_, out, err := appHealthHandler(env)(ctx, nil, appHealthInput{})
-			return out, err
+			return actions.AppHealth(ctx, env, "")
 		}},
 		{"app_logs", func() (interface{}, error) {
-			_, out, err := appLogsHandler(env)(ctx, nil, appLogsInput{Tail: 20})
-			return out, err
+			return actions.AppLogs(ctx, env, "", actions.AppLogsInput{Tail: 20})
 		}},
 		{"infra_docs", func() (interface{}, error) {
-			_, out, err := infraDocsHandler(env)(ctx, nil, infraDocsInput{Search: "targetRevision"})
-			return out, err
+			return actions.InfraDocs(env, "targetRevision", "")
 		}},
 		{"scaffold_workflow", func() (interface{}, error) {
-			_, out, err := scaffoldWorkflowHandler(env)(ctx, nil, scaffoldWorkflowInput{Write: false})
-			return out, err
+			return actions.ScaffoldWorkflow(env, "", false)
 		}},
 	}
 
@@ -51,8 +46,4 @@ func RunSmoke(ctx context.Context, env *Env) error {
 		fmt.Println()
 	}
 	return nil
-}
-
-func PrintContext(env *Env) (*appctx.AppContext, error) {
-	return resolveApp(env, "")
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	appctx "github.com/gabehamasaki/infra/tools/mcp/internal/context"
+	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
 	"gopkg.in/yaml.v3"
 )
 
