@@ -90,7 +90,7 @@ routing:
   webPath: /
 ```
 
-**Primeiro deploy monorepo com DB:** root-app refresh → Postgres role/DB ([`08-data-services.md`](../../../docs/08-data-services.md)) → sealed secret → CI com SHA → sync Argo → migration PreSync. Tabela de falhas em [`09-cicd.md`](../../../docs/09-cicd.md).
+**Primeiro deploy monorepo com DB:** root-app refresh → Postgres role/DB ([`08-data-services.md`](../../../docs/08-data-services.md)) → sealed secret → tag `v*` na main → sync Argo → migration PreSync. Tabela de falhas em [`09-cicd.md`](../../../docs/09-cicd.md).
 
 **5. Secret do CI:**
 
