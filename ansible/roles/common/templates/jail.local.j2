@@ -1,0 +1,18 @@
+[DEFAULT]
+# Ubuntu manda o log do sshd pro journal, não pro /var/log/auth.log que o jail padrão
+# do pacote espera. Sem `backend = systemd` a jail sobe, aparece no
+# `fail2ban-client status` e nunca bane ninguém — falha silenciosa clássica.
+backend = systemd
+banaction = ufw
+
+bantime = {{ fail2ban_bantime }}
+bantime.increment = true
+bantime.factor = 2
+bantime.maxtime = {{ fail2ban_bantime_maxtime }}
+findtime = {{ fail2ban_findtime }}
+maxretry = {{ fail2ban_maxretry }}
+ignoreip = {{ fail2ban_ignoreip | join(' ') }}
+
+[sshd]
+enabled = true
+port = ssh

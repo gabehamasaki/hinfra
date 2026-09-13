@@ -18,6 +18,37 @@
       - python3-jsonpatch
     state: present
 
+# Conferido antes de qualquer regra de firewall: escrever uma allowlist a partir de uma
+# lista desatualizada deixaria visitantes legítimos de fora.
+- name: Consultar os ranges atuais da Cloudflare
+  ansible.builtin.uri:
+    url: https://api.cloudflare.com/client/v4/ips
+    return_content: true
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: cloudflare_ips_api
+  # Um blip de rede na máquina de controle não deve derrubar o provisionamento inteiro;
+  # o assert abaixo simplesmente não roda quando a consulta não completa.
+  failed_when: false
+  changed_when: false
+  when: cloudflare_ip_ranges_verify | bool
+
+- name: Exigir que a lista versionada de ranges bata com a da Cloudflare
+  ansible.builtin.assert:
+    that:
+      - cloudflare_ip_ranges_v4 | sort == cloudflare_ips_api.json.result.ipv4_cidrs | sort
+      - cloudflare_ip_ranges_v6 | sort == cloudflare_ips_api.json.result.ipv6_cidrs | sort
+    fail_msg: >-
+      Os ranges da Cloudflare mudaram. Atualize cloudflare_ip_ranges_v4/v6 em
+      group_vars/all/vars.yml com o conteúdo de https://api.cloudflare.com/client/v4/ips
+      e rode de novo. Enquanto isso não for feito, parte do tráfego legítimo da
+      Cloudflare seria bloqueada pelo UFW (site fora do ar para alguns visitantes).
+    success_msg: Lista de ranges da Cloudflare em dia.
+  when:
+    - cloudflare_ip_ranges_verify | bool
+    - cloudflare_ips_api.status | default(0) == 200
+
 - name: UFW - política padrão (deny incoming, allow outgoing)
   community.general.ufw:
     state: enabled
@@ -29,29 +60,63 @@
     policy: allow
     direction: outgoing
 
+# Mantida aberta (com rate limit do próprio ufw) de propósito. Restringir SSH à tailnet
+# deixaria o acesso à máquina dependente do Tailscale estar de pé: se a tailnet cair, não
+# há segunda porta de entrada. O risco de lockout é pior que o ganho, já que a 22 está
+# coberta por fail2ban e não aceita senha nem root.
 - name: UFW - permitir SSH (22) na interface pública
   community.general.ufw:
     rule: limit
     port: "22"
     proto: tcp
 
-- name: UFW - permitir HTTP (80) na interface pública
+# 80/443 só da Cloudflare. É isso que impede um atacante de contornar o proxy batendo
+# direto no IP de origem — sem esta regra, o WAF e o anti-DDoS da Cloudflare viram
+# decoração, porque a origem continua alcançável por quem souber o IP.
+- name: UFW - permitir HTTP/HTTPS somente dos ranges da Cloudflare
   community.general.ufw:
     rule: allow
-    port: "80"
+    port: "{{ item.1 }}"
     proto: tcp
+    from_ip: "{{ item.0 }}"
+  loop: "{{ (cloudflare_ip_ranges_v4 + cloudflare_ip_ranges_v6) | product(['80', '443']) | list }}"
 
-- name: UFW - permitir HTTPS (443) na interface pública
+# Regra de ufw é aditiva: as regras abertas criadas por versões anteriores deste role
+# continuariam valendo em paralelo às acima, e a allowlist não teria efeito nenhum.
+# Removidas depois de adicionar as específicas, pra não abrir janela de indisponibilidade.
+- name: UFW - remover as regras antigas de HTTP/HTTPS abertas pra internet
   community.general.ufw:
     rule: allow
-    port: "443"
+    port: "{{ item }}"
     proto: tcp
+    delete: true
+  loop:
+    - "80"
+    - "443"
 
 - name: UFW - liberar tudo na interface tailscale0 (tráfego de cluster/API)
   community.general.ufw:
     rule: allow
     interface: tailscale0
     direction: in
+
+- name: Endurecer parâmetros de rede do kernel (SYN flood, redirects, source routing)
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop: "{{ hardening_sysctl | dict2items }}"
+
+- name: Configurar as jails do fail2ban
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart fail2ban
 
 - name: fail2ban habilitado e ativo
   ansible.builtin.systemd:

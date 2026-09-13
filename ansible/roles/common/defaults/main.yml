@@ -1,0 +1,35 @@
+---
+# Confere a lista versionada de ranges da Cloudflare contra a API antes de escrever
+# regra de firewall. Desligar isso só faz sentido em provisionamento sem internet de
+# saída — o preço é abrir 80/443 pra uma lista possivelmente desatualizada.
+cloudflare_ip_ranges_verify: true
+
+# fail2ban. `bantime` cresce a cada reincidência (fator 2, teto de uma semana), então
+# um scanner insistente sai de circulação sozinho sem que ninguém precise intervir.
+fail2ban_bantime: 1h
+fail2ban_bantime_maxtime: 1w
+fail2ban_findtime: 10m
+fail2ban_maxretry: 4
+# Nunca banir a própria tailnet: perder a tailnet é perder o acesso administrativo
+# ao cluster inteiro, e um erro de digitação de chave SSH não deveria custar isso.
+fail2ban_ignoreip:
+  - 127.0.0.1/8
+  - ::1
+  - 100.64.0.0/10
+
+# Endurecimento de rede do host. Escopo deliberadamente estreito: só o que ajuda contra
+# SYN flood e spoofing básico.
+#
+# O que NÃO está aqui é intencional. `rp_filter`, `send_redirects` e qualquer coisa de
+# conntrack/forwarding ficam de fora porque o flannel roda sobre a tailscale0 com MTU
+# ajustado e o kube-proxy gerencia parte dessas chaves — mexer nelas quebra rede de pod
+# de um jeito que se manifesta como timeout intermitente, difícil de rastrear até aqui.
+hardening_sysctl:
+  net.ipv4.tcp_syncookies: 1
+  net.ipv4.tcp_max_syn_backlog: 4096
+  net.ipv4.tcp_synack_retries: 2
+  net.ipv4.tcp_rfc1337: 1
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv6.conf.all.accept_redirects: 0
