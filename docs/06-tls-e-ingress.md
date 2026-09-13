@@ -6,6 +6,44 @@ Vem embutido no k3s, instalado via `HelmChart` do próprio k3s no namespace `kub
 
 Ele atende **todos** os hosts na mesma porta 443, tanto na interface pública quanto na `tailscale0`. A separação entre "público" e "só tailnet" não é feita por porta ou por listener, e sim por um middleware de allowlist de IP. Isso torna a configuração desse middleware parte crítica da segurança, não um detalhe.
 
+### Como customizar o chart embutido
+
+O k3s instala o Traefik via `HelmChart` próprio, então não há release Helm para o Ansible gerenciar. A forma suportada de mudar values é um **`HelmChartConfig`** com o mesmo nome e namespace, que o k3s faz merge com os values dele. Fica em `platform/traefik/helmchartconfig.yaml.j2`, aplicado pelo role `traefik`:
+
+| Value | Para quê |
+| --- | --- |
+| `service.spec.externalTrafficPolicy: Local` | Sem isso o `IPAllowList` responde 403 para todos (ver [11 - Armadilhas](11-armadilhas.md)) |
+| `ports.web/websecure.forwardedHeaders.trustedIPs` | Ranges da Cloudflare — só deles o Traefik aceita `X-Forwarded-For` |
+| `logs.access.enabled: true` + `format: json` | Access log, com `Cf-Connecting-Ip` e `Cf-Ray` preservados |
+| `ports.websecure.http.middlewares` | Middlewares aplicados a **toda** requisição na 443 |
+
+Duas armadilhas de nomenclatura aqui, ambas do tipo que falha em silêncio:
+
+- O caminho é **`ports.websecure.http.middlewares`**, não `ports.websecure.middlewares`. A segunda forma não existe no chart, e o Helm aceita chave desconhecida sem reclamar.
+- Não existe `ports.web.redirectTo`. Redirect por entrypoint é `ports.web.http.redirections.entryPoint`. Aqui não usamos nenhum dos dois: o redirect HTTP→HTTPS é feito pela Cloudflare (`Always Use HTTPS`), antes de gastar recurso da origem.
+
+O role move o `externalTrafficPolicy` do patch imperativo que existia no role `argocd` para os values. Manter os dois seria pedir para o Helm reverter o patch numa reinstalação.
+
+Depois de mudar values, **confirme que pegou** — o helm-controller do k3s roda um Job de upgrade e só depois recria o pod, então checar "Deployment disponível" dá falso positivo enquanto o Traefik antigo ainda serve:
+
+```bash
+kubectl -n kube-system get deploy traefik \
+  -o jsonpath='{.spec.template.spec.containers[0].args}' | tr ',' '\n' | grep -i forwarded
+```
+
+### Middlewares compartilhados
+
+Dois, em `kube-system` (`platform/traefik/middlewares.yaml.j2`):
+
+- **`security-headers`** — HSTS, `nosniff`, `frameDeny`, `Referrer-Policy`. Aplicado **globalmente** no entrypoint `websecure`, porque é inofensivo para qualquer origem.
+- **`public-rate-limit`** — aplicado **só por annotation, em Ingress público**. Nunca global, e isso não é preferência: o middleware identifica o cliente pelo header `CF-Connecting-IP`, e requisição sem esse header (todo o tráfego da tailnet) cai num único bucket compartilhado. Global, os consoles começariam a tomar `429` uns por causa dos outros.
+
+```yaml
+traefik.ingress.kubernetes.io/router.middlewares: "kube-system-public-rate-limit@kubernetescrd"
+```
+
+O rate limit da Cloudflare (100 req/10s por IP) é mais estrito e age antes, na borda. O do Traefik é a rede de segurança para o caso de algo chegar à origem por outro caminho.
+
 ### `externalTrafficPolicy: Local` — sem isso a allowlist não funciona
 
 Por padrão o Service do Traefik nasce com `externalTrafficPolicy: Cluster`, e o kube-proxy aplica SNAT no tráfego que entra pelo LoadBalancer. O Traefik enxerga o IP interno do cluster como origem, **não o IP real do cliente**.

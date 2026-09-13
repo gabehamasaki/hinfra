@@ -69,6 +69,69 @@ Aplicado de forma permanente pelo role `argocd`.
 
 ---
 
+## O SNAT do Tailscale quebra o IPAllowList (e um `apt upgrade` liga isso sozinho)
+
+**Sintoma.** Idêntico ao caso acima e por isso especialmente confuso: `403` em **todos** os consoles, inclusive de dentro da tailnet, com o `externalTrafficPolicy: Local` corretamente aplicado. O access log do Traefik mostra `ClientHost: 10.42.0.1` — o endereço da bridge `cni0`, ou seja, o próprio node mascarando.
+
+**Causa.** O `tailscaled` marca o pacote que entra pela tailnet e a regra `ts-postrouting` o mascara na saída para a rede de pods:
+
+```
+-A POSTROUTING -j ts-postrouting
+-A ts-postrouting -m mark --mark 0x40000/0xff0000 -j MASQUERADE
+```
+
+Como `ts-postrouting` é a **primeira** cadeia do `POSTROUTING`, ela age antes de qualquer regra do kube-proxy ou do flannel. O `--snat-subnet-routes` do Tailscale é `true` por padrão e existe para subnet routes — que esta VPS **não anuncia** (`AdvertiseRoutes: null`). O SNAT não serve a nenhum propósito aqui e só destrói o IP de origem.
+
+**O gatilho.** Um `apt upgrade` do role `common` atualizou o Tailscale (1.102.3 → 1.102.4) e reiniciou o `tailscaled`. Nada no Kubernetes mudou — o que muda de comportamento é a pilha de netfilter do Tailscale. É o tipo de regressão que aparece horas depois, sem relação óbvia com o último `kubectl apply`.
+
+**Correção.**
+
+```bash
+sudo tailscale set --snat-subnet-routes=false
+```
+
+Aplicado de forma permanente pelo role `tailscale`, em **duas** tasks: a flag no `tailscale up` (para node novo) e um `tailscale set` idempotente (porque o `tailscale up` é pulado em node que já está na tailnet).
+
+**Como diagnosticar isso em 3 comandos**, sem reler cadeias inteiras de iptables:
+
+```bash
+# 1. o pacote chega com o IP certo e sai reescrito? (mesma porta de origem = mesma conexão)
+sudo tcpdump -ni tailscale0 'tcp port 443 and tcp[tcpflags] & tcp-syn != 0'
+sudo tcpdump -ni cni0 'dst port 8443 and tcp[tcpflags] & tcp-syn != 0'
+
+# 2. qual regra de NAT incrementa? compare o contador antes e depois de gerar tráfego
+sudo iptables -t nat -L ts-postrouting -v -n
+
+# 3. o SNAT está ligado?
+sudo tailscale debug prefs | grep -i NoSNAT     # NoSNAT: false = SNAT ligado
+```
+
+**Lição operacional.** A allowlist de IP é a segunda camada e falha **fechada** (403 para todos), não aberta — nenhum acesso indevido foi liberado. A primeira camada, DNS apontando para um IP CGNAT não roteável, é a que sustenta a proteção enquanto isso. Não vale relaxar a allowlist (adicionando `10.42.0.0/16`, por exemplo) para contornar o sintoma: qualquer requisição que alcance o Traefik pelo IP público com o `Host` forçado apareceria com esse mesmo IP e passaria.
+
+---
+
+## SSL "Flexible" da Cloudflare + redirect na origem = loop infinito
+
+**Sintoma.** `ERR_TOO_MANY_REDIRECTS` no navegador, e a origem parecendo saudável em todos os testes locais.
+
+**Causa.** Com o modo SSL da zona em `Flexible`, a Cloudflare termina o TLS na borda e fala **HTTP** com a origem. Se a origem redireciona HTTP→HTTPS, ela devolve um 301 para HTTPS, a Cloudflare volta a buscar em HTTP, e o ciclo não termina.
+
+**Correção.** `Full (strict)`, que é o correto aqui de qualquer forma: a origem tem certificado Let's Encrypt válido, emitido por DNS-01. E não configurar redirect na origem — quem faz isso é o `Always Use HTTPS` da Cloudflare, antes de gastar recurso da VPS.
+
+Vale notar que `full` e `strict` são valores diferentes na API (`/zones/{id}/settings/ssl`): `full` não valida o certificado da origem.
+
+---
+
+## Rate limit sem `sourceCriterion` conta todo mundo no mesmo bucket
+
+**Sintoma.** Um visitante ruidoso gera `429` para todos os outros.
+
+**Causa.** Por padrão o `rateLimit` do Traefik conta por IP de origem da conexão TCP. Com a Cloudflare na frente, esse IP é **sempre** um IP dela — então todos os visitantes dividem o mesmo contador.
+
+**Correção.** `sourceCriterion.requestHeaderName: Cf-Connecting-Ip`, que identifica o cliente real. O efeito colateral disso é o motivo de o middleware não ser global: requisição **sem** esse header (todo o tráfego da tailnet) também cai num bucket único compartilhado. Por isso ele é aplicado só por annotation, em Ingress público.
+
+---
+
 ## Repositórios Helm que mudaram de lugar
 
 **Sintoma.** `404` e `Moved Permanently` em URLs que a documentação ainda cita.

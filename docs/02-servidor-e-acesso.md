@@ -69,15 +69,27 @@ Duas camadas, com propósitos distintos.
 ### `ufw`, no host (gerido pelo Ansible)
 
 ```
-22/tcp    LIMIT   Anywhere          # rate-limit contra força bruta
-80/tcp    ALLOW   Anywhere
-443/tcp   ALLOW   Anywhere
-Anywhere on tailscale0  ALLOW        # tráfego de cluster e API
+22/tcp    LIMIT   Anywhere              # rate-limit contra força bruta
+80/tcp    ALLOW   173.245.48.0/20       # ... uma regra por range da Cloudflare
+443/tcp   ALLOW   173.245.48.0/20       #     (15 ranges IPv4 + 7 IPv6 = 44 regras)
+Anywhere on tailscale0  ALLOW           # tráfego de cluster e API
 ```
 
 Política padrão: `deny (incoming)`, `allow (outgoing)`, `deny (routed)`.
 
 A porta `6443` (API do Kubernetes) **não aparece na lista** — e é esse o ponto. Ela só é alcançável através da interface `tailscale0`, coberta pela regra de interface. Da internet pública, a porta simplesmente não responde.
+
+**80/443 só aceitam tráfego da Cloudflare.** É isso que impede alguém de contornar o proxy batendo direto no IP de origem: sem essa restrição, o WAF, o rate limit e o anti-DDoS da Cloudflare seriam decoração, porque a origem continuaria alcançável por quem descobrisse o IP (e um IP público é descoberto por varredura, não por DNS). A lista de ranges é versionada em `group_vars/all/vars.yml` como `cloudflare_ip_ranges_v4`/`_v6`, e o role `common` a confere contra `https://api.cloudflare.com/client/v4/ips` **e falha o playbook se divergir** — uma mudança da Cloudflare tem que aparecer como erro, não como site fora do ar para parte dos visitantes.
+
+A consequência operacional: qualquer host público novo **precisa** estar proxied na Cloudflare. Um registro em "DNS only" apontando para o IP público fica inalcançável.
+
+### `fail2ban`
+
+O pacote é instalado desde o início, mas até haver `/etc/fail2ban/jail.local` ele não banіa nada. A jail `sshd` usa `backend = systemd` porque o Ubuntu manda o log do sshd para o journal, não para o `/var/log/auth.log` que o jail padrão do pacote espera — sem isso a jail sobe, aparece no `fail2ban-client status` e nunca bane ninguém. O `bantime` cresce a cada reincidência (fator 2, teto de uma semana), e `ignoreip` inclui `100.64.0.0/10`: banir a própria tailnet custaria o acesso administrativo ao cluster inteiro.
+
+```bash
+sudo fail2ban-client status sshd    # confirma que a jail está ativa e lendo do journal
+```
 
 Essa configuração é portável: `ufw` funciona em qualquer VPS de qualquer provedor, o que atende ao requisito de replicabilidade.
 
@@ -129,10 +141,25 @@ Os dois domínios são registrados na Hostinger, mas o DNS autoritativo é o **C
 
 | Registro | Aponta para | Proxy | Alcance |
 | --- | --- | --- | --- |
-| `<apps_domain>` (apex) | `<VPS_PUBLIC_IP>` (público) | Não | Internet |
+| `<apps_domain>` (apex) | `<VPS_PUBLIC_IP>` (público) | **Sim** | Internet, via Cloudflare |
+| `schedule-visits.<apps_domain>` | `<VPS_PUBLIC_IP>` (público) | **Sim** | Internet, via Cloudflare |
+| `study.<apps_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 | `argocd.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 | `grafana.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 | `s3.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
+
+Os hosts públicos são **proxied** (nuvem laranja): o IP da VPS deixa de aparecer no DNS e o tráfego passa pelo WAF, pelo rate limit e pela mitigação de DDoS da Cloudflare. Num node de 2 vCPU isso não é conforto, é a única defesa que funciona — rejeitar um flood localmente ainda gastaria CPU da própria VPS.
+
+Os hosts da tailnet **não podem** ser proxied: a Cloudflare não aceita um IP `100.64.0.0/10` como origem. Continuam em "DNS only", protegidos por não serem roteáveis.
+
+Configuração da zona dos apps, junto com o proxy:
+
+| Ajuste | Valor | Por quê |
+| --- | --- | --- |
+| SSL/TLS | **Full (strict)** | Com `Flexible` a Cloudflare fala HTTP com a origem; qualquer redirect HTTP→HTTPS na origem viraria loop infinito |
+| Always Use HTTPS | On | Redirect 301 feito na borda |
+| WAF Managed Free Ruleset | Implantado | Existir na zona não basta: sem uma regra `execute` na fase `http_request_firewall_managed`, o ruleset não é executado |
+| Rate limiting | 100 req / 10s por IP | O plano Free só permite período de 10s (a API recusa 60s com `not entitled to use the period 60`) |
 
 Os registros de e-mail de `<apps_domain>` (MX, SPF, DKIM, DMARC, apontando para o Hostinger Mail) **não foram tocados** e não devem ser.
 
