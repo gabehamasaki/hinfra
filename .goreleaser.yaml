@@ -23,7 +23,47 @@ archives:
 checksum:
   name_template: checksums.txt
 
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^Merge pull request"
+      - "^Merge branch"
+      - "^Merge remote-tracking branch"
+  groups:
+    - title: Features
+      regexp: "^feat(\\(.+\\))?!?:.+"
+      order: 0
+    - title: Bug fixes
+      regexp: "^fix(\\(.+\\))?!?:.+"
+      order: 1
+    - title: Documentation
+      regexp: "^docs(\\(.+\\))?!?:.+"
+      order: 2
+    - title: CI / tooling
+      regexp: "^(ci|build)(\\(.+\\))?!?:.+"
+      order: 3
+    - title: Other
+      order: 99
+
 release:
+  mode: replace
+  header: |
+    ## Install
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/gabehamasaki/hinfra/{{ .Tag }}/scripts/install-hinfra.sh | bash
+    ```
+
+    Or pick a binary below (`hinfra-linux-amd64`, `hinfra-darwin-arm64`, …) and verify with `checksums.txt`.
+
+    Full docs: [README](https://github.com/gabehamasaki/hinfra/blob/{{ .Tag }}/README.md) · [docs/](https://github.com/gabehamasaki/hinfra/tree/{{ .Tag }}/docs)
+
+    ## Changelog
+  footer: |
+    ---
+
+    **Full commit list:** https://github.com/gabehamasaki/hinfra/compare/{{ .PreviousTag }}...{{ .Tag }}
   github:
     owner: gabehamasaki
     name: hinfra
