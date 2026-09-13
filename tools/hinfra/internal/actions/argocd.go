@@ -45,13 +45,12 @@ func ArgoCDRefreshByName(ctx context.Context, env *Env, appName string) (ArgoCDR
 	if err != nil {
 		return ArgoCDRefreshResult{}, err
 	}
-	path, hasChart, err := ac.SourcePath(ctx, appName)
-	if err != nil {
+	if err := ac.Refresh(ctx, appName); err != nil {
 		return ArgoCDRefreshResult{}, err
 	}
-	target := argocd.RefreshTarget(appName, path, hasChart)
-	if err := ac.Refresh(ctx, target); err != nil {
-		return ArgoCDRefreshResult{}, err
-	}
-	return ArgoCDRefreshResult{Target: target, Message: "refresh hard aplicado"}, nil
+	return ArgoCDRefreshResult{Target: appName, Message: "refresh hard aplicado"}, nil
+}
+
+func ArgoCDRefreshRoot(ctx context.Context, env *Env) (ArgoCDRefreshResult, error) {
+	return ArgoCDRefreshByName(ctx, env, "root-app")
 }

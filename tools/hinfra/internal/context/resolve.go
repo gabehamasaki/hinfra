@@ -91,18 +91,21 @@ func (r *Resolver) Resolve(cwd string, appOverride string) (*AppContext, error) 
 		routing = hinfra.Routing
 	}
 
+	buildContexts := ResolvedBuildContexts(hinfra)
+
 	ctx := &AppContext{
-		Name:        appName,
-		Namespace:   namespace,
-		InfraRepo:   r.InfraRepo,
-		ProjectRepo: projectRepo,
-		Image:       imageName,
-		ImageRef:    ImageRegistry + "/" + imageName,
-		AppPath:     appPath,
-		Kubeconfig:  r.Kubeconfig,
-		Host:        host,
-		Exposure:    exposure,
-		Routing:     routing,
+		Name:          appName,
+		Namespace:     namespace,
+		InfraRepo:     r.InfraRepo,
+		ProjectRepo:   projectRepo,
+		Image:         imageName,
+		ImageRef:      ImageRegistry + "/" + imageName,
+		AppPath:       appPath,
+		Kubeconfig:    r.Kubeconfig,
+		Host:          host,
+		Exposure:      exposure,
+		Routing:       routing,
+		BuildContexts: buildContexts,
 	}
 	if len(images) > 0 {
 		ctx.Images = images

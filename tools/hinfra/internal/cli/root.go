@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
@@ -44,6 +45,7 @@ func NewRoot() *cobra.Command {
 	root.AddCommand(newArgoCDCmd())
 	root.AddCommand(newRollbackCmd())
 	root.AddCommand(newScaffoldCmd())
+	root.AddCommand(newSealCmd())
 	return root
 }
 
@@ -78,10 +80,13 @@ func newDoctorCmd() *cobra.Command {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			if err := tailnet.Require(ctx, env.Runtime.TailnetAPI, 2*time.Second); err != nil {
-				fatal(err)
-			}
-			fmt.Println("doctor ok")
+		if err := tailnet.Require(ctx, env.Runtime.TailnetAPI, 2*time.Second); err != nil {
+			fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".config", "infra-mcp", "config.yaml")); err == nil {
+			fmt.Println("aviso: migre ~/.config/infra-mcp/config.yaml para ~/.config/hinfra/config.yaml")
+		}
+		fmt.Println("doctor ok")
 		},
 	}
 }

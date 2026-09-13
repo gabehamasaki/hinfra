@@ -84,12 +84,16 @@ func TestRenderMonorepoWorkflow(t *testing.T) {
 			"api": "gabehamasaki/my-app-api",
 			"web": "gabehamasaki/my-app-web",
 		},
+		BuildContexts: appctx.BackendFrontendBuildContexts(),
 	})
 	if strings.Contains(out, "CHANGE-ME") {
 		t.Fatalf("template still has CHANGE-ME: %s", out)
 	}
 	if !strings.Contains(out, "gabehamasaki/my-app-api") || !strings.Contains(out, "gabehamasaki/my-app-web") {
 		t.Fatalf("unexpected output: %s", out)
+	}
+	if !strings.Contains(out, "context: ./backend") || !strings.Contains(out, "file: backend/docker/Dockerfile") {
+		t.Fatalf("expected backend build paths: %s", out)
 	}
 }
 
@@ -99,6 +103,27 @@ func TestWorkflowTemplateName(t *testing.T) {
 	}
 	if WorkflowTemplateName(true) != "deploy-workflow-monorepo-template.yml" {
 		t.Fatal("expected monorepo template")
+	}
+}
+
+func TestRenderMonorepoAppFiles(t *testing.T) {
+	files, err := RenderMonorepoAppFiles(MonorepoAppParams{
+		Name: "demo", Host: "demo.hamasakis.dev", Exposure: "public",
+		NeedsMigration: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ing := files["apps/demo/ingress.yaml"]
+	if !strings.Contains(ing, "name: web") {
+		t.Fatalf("ingress should route to web service: %s", ing)
+	}
+	job := files["apps/demo/migration-job.yaml"]
+	if !strings.Contains(job, "PreSync") {
+		t.Fatalf("migration should be PreSync: %s", job)
+	}
+	if strings.Contains(files["apps/demo/api-deployment.yaml"], "/api/v1") {
+		t.Fatal("api probe should not hit DB endpoint in scaffold")
 	}
 }
 

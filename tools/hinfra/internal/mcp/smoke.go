@@ -30,7 +30,7 @@ func RunSmoke(ctx context.Context, env *Env) error {
 			return actions.InfraDocs(env, "targetRevision", "")
 		}},
 		{"scaffold_workflow", func() (interface{}, error) {
-			return actions.ScaffoldWorkflow(env, "", false)
+			return actions.ScaffoldWorkflow(env, actions.ScaffoldWorkflowInput{})
 		}},
 	}
 

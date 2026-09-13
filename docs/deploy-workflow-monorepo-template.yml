@@ -1,6 +1,7 @@
 # Template monorepo (api + web) — copie para `.github/workflows/deploy.yml` no repo do projeto.
 # Ajuste IMAGE_API, IMAGE_WEB e APP_PATH. Requer INFRA_REPO_TOKEN (PAT fine-grained no repo infra).
-# Convenção: Dockerfiles em ./api e ./web. Binding explícito em hinfra.yml (gerado por scaffold_workflow).
+# Paths de build vêm de hinfra.yml (buildContexts); defaults ./api e ./web.
+# IMPORTANTE: o campo `file` do docker/build-push-action é relativo à RAIZ do repo, não ao `context`.
 name: deploy
 
 on:
@@ -32,7 +33,8 @@ jobs:
       - name: Build e push da api
         uses: docker/build-push-action@v6
         with:
-          context: ./api
+          context: BUILD_CONTEXT_API
+          file: BUILD_FILE_API
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_API }}:${{ github.sha }}
@@ -41,7 +43,8 @@ jobs:
       - name: Build e push do web
         uses: docker/build-push-action@v6
         with:
-          context: ./web
+          context: BUILD_CONTEXT_WEB
+          file: BUILD_FILE_WEB
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_WEB }}:${{ github.sha }}

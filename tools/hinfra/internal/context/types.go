@@ -14,18 +14,20 @@ type AppContext struct {
 	Kubeconfig  string
 	Host        string
 	Exposure    string
-	Routing     *HinfraRouting
+	Routing       *HinfraRouting
+	BuildContexts map[string]BuildContext
 }
 
 type HinfraConfig struct {
-	App       string            `yaml:"app"`
-	Image     string            `yaml:"image"`
-	Images    map[string]string `yaml:"images"`
-	AppPath   string            `yaml:"appPath"`
-	Namespace string            `yaml:"namespace"`
-	Host      string            `yaml:"host"`
-	Exposure  string            `yaml:"exposure"`
-	Routing   *HinfraRouting    `yaml:"routing"`
+	App           string                     `yaml:"app"`
+	Image         string                     `yaml:"image"`
+	Images        map[string]string          `yaml:"images"`
+	BuildContexts map[string]BuildContext    `yaml:"buildContexts"`
+	AppPath       string                     `yaml:"appPath"`
+	Namespace     string                     `yaml:"namespace"`
+	Host          string                     `yaml:"host"`
+	Exposure      string                     `yaml:"exposure"`
+	Routing       *HinfraRouting             `yaml:"routing"`
 }
 
 type HinfraRouting struct {

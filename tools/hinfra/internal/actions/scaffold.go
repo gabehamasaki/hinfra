@@ -13,41 +13,79 @@ import (
 )
 
 type ScaffoldAppInput struct {
-	Name          string
-	Host          string
-	ContainerPort int
-	CPURequest    string
-	MemoryRequest string
-	MemoryLimit   string
-	Exposure      string
-	Write         bool
+	Name              string
+	Host              string
+	ContainerPort     int
+	CPURequest        string
+	MemoryRequest     string
+	MemoryLimit       string
+	Exposure          string
+	Write             bool
+	Monorepo          bool
+	ApiPort           int
+	WebPort           int
+	NeedsMigration    bool
+	NeedsSealedSecret bool
+	MigrationCommand  string
 }
 
 type ScaffoldAppResult struct {
-	Content string `json:"content,omitempty"`
-	Message string `json:"message,omitempty"`
-	DNS     string `json:"dnsHint,omitempty"`
+	Content   string   `json:"content,omitempty"`
+	Message   string   `json:"message,omitempty"`
+	DNS       string   `json:"dnsHint,omitempty"`
+	Checklist []string `json:"checklist,omitempty"`
 }
 
 func ScaffoldApp(env *Env, in ScaffoldAppInput) (ScaffoldAppResult, error) {
 	if in.Name == "" || in.Host == "" {
 		return ScaffoldAppResult{}, fmt.Errorf("name e host são obrigatórios")
 	}
-	p := scaffold.AppParams{
-		Name: in.Name, Host: in.Host, ContainerPort: in.ContainerPort,
-		CPURequest: in.CPURequest, MemoryRequest: in.MemoryRequest,
-		MemoryLimit: in.MemoryLimit, Exposure: in.Exposure,
-		ImageRef: appctx.ImageRegistry + "/gabehamasaki/" + in.Name,
+	exposure := in.Exposure
+	if exposure == "" {
+		exposure = "public"
 	}
-	files, err := scaffold.RenderAppFiles(p)
+	var files map[string]string
+	var err error
+	if in.Monorepo {
+		p := scaffold.MonorepoAppParams{
+			Name: in.Name, Host: in.Host, Exposure: exposure,
+			ApiPort: in.ApiPort, WebPort: in.WebPort,
+			NeedsMigration:    true,
+			NeedsSealedSecret: true,
+			MigrationCommand:  in.MigrationCommand,
+			CPURequest:        in.CPURequest, MemoryRequest: in.MemoryRequest, MemoryLimit: in.MemoryLimit,
+		}
+		files, err = scaffold.RenderMonorepoAppFiles(p)
+	} else {
+		p := scaffold.AppParams{
+			Name: in.Name, Host: in.Host, ContainerPort: in.ContainerPort,
+			CPURequest: in.CPURequest, MemoryRequest: in.MemoryRequest,
+			MemoryLimit: in.MemoryLimit, Exposure: exposure,
+			ImageRef: appctx.ImageRegistry + "/gabehamasaki/" + in.Name,
+		}
+		files, err = scaffold.RenderAppFiles(p)
+	}
 	if err != nil {
 		return ScaffoldAppResult{}, err
 	}
 	msg, err := scaffold.WriteFiles(env.Runtime.InfraRepo, files, in.Write)
+	checklist := scaffoldAppChecklist(in.Monorepo, in.Write)
 	if err != nil && in.Write {
-		return ScaffoldAppResult{Content: msg}, err
+		return ScaffoldAppResult{Content: msg, Checklist: checklist}, err
 	}
-	return ScaffoldAppResult{Content: msg, Message: msg, DNS: scaffold.DNSHint(p.Exposure)}, nil
+	return ScaffoldAppResult{Content: msg, Message: msg, DNS: scaffold.DNSHint(exposure), Checklist: checklist}, nil
+}
+
+func scaffoldAppChecklist(monorepo, wrote bool) []string {
+	items := []string{}
+	if wrote {
+		items = append(items, "hinfra argocd refresh --root (registrar Application novo no ArgoCD)")
+	}
+	if monorepo {
+		items = append(items, "Gere sealed-secret.yaml com hinfra seal secret e adicione ao kustomization")
+		items = append(items, "Ajuste migration-job.yaml command para o migrator real da API")
+	}
+	return items
 }
 
 type ScaffoldWorkflowResult struct {
@@ -57,10 +95,34 @@ type ScaffoldWorkflowResult struct {
 	Message   string   `json:"message,omitempty"`
 }
 
-func ScaffoldWorkflow(env *Env, appOverride string, write bool) (ScaffoldWorkflowResult, error) {
-	app, err := ResolveApp(env, appOverride)
+type ScaffoldWorkflowInput struct {
+	AppOverride string
+	Write         bool
+	Monorepo      bool
+}
+
+func ScaffoldWorkflow(env *Env, in ScaffoldWorkflowInput) (ScaffoldWorkflowResult, error) {
+	app, err := ResolveApp(env, in.AppOverride)
 	if err != nil {
 		return ScaffoldWorkflowResult{}, err
+	}
+	if in.Monorepo && !app.IsMonorepo() {
+		owner, _, parseErr := git.ParseOriginURL(mustOrigin(app.ProjectRepo))
+		if parseErr != nil {
+			return ScaffoldWorkflowResult{}, parseErr
+		}
+		appName := app.Name
+		if in.AppOverride != "" {
+			appName = in.AppOverride
+		}
+		app.Images = map[string]string{
+			"api": owner + "/" + appName + "-api",
+			"web": owner + "/" + appName + "-web",
+		}
+		app.BuildContexts = appctx.DefaultBuildContexts()
+		if app.Routing == nil {
+			app.Routing = &appctx.HinfraRouting{ApiPath: "/api", WebPath: "/"}
+		}
 	}
 	tmplPath := filepath.Join(env.Runtime.InfraRepo, "docs", scaffold.WorkflowTemplateName(app.IsMonorepo()))
 	tmplBytes, err := os.ReadFile(tmplPath)
@@ -69,9 +131,14 @@ func ScaffoldWorkflow(env *Env, appOverride string, write bool) (ScaffoldWorkflo
 	}
 	var workflow string
 	if app.IsMonorepo() {
+		bc := app.BuildContexts
+		if len(bc) == 0 {
+			bc = appctx.DefaultBuildContexts()
+		}
 		workflow = scaffold.RenderMonorepoWorkflow(string(tmplBytes), scaffold.MonorepoWorkflowParams{
-			AppPath: app.AppPath,
-			Images:  app.Images,
+			AppPath:       app.AppPath,
+			Images:        app.Images,
+			BuildContexts: bc,
 		})
 	} else {
 		workflow = scaffold.RenderWorkflow(string(tmplBytes), scaffold.WorkflowParams{
@@ -79,12 +146,16 @@ func ScaffoldWorkflow(env *Env, appOverride string, write bool) (ScaffoldWorkflo
 			AppPath:   app.AppPath,
 		})
 	}
+	bc := app.BuildContexts
+	if app.IsMonorepo() && len(bc) == 0 {
+		bc = appctx.DefaultBuildContexts()
+	}
 	hinfra := scaffold.RenderHinfra(scaffold.HinfraParams{
-		App: app.Name, Image: app.Image, Images: app.Images, Routing: app.Routing,
+		App: app.Name, Image: app.Image, Images: app.Images, BuildContexts: bc, Routing: app.Routing,
 		AppPath: app.AppPath, Namespace: app.Namespace, Host: app.Host, Exposure: app.Exposure,
 	})
 	checklist := buildChecklist(app)
-	if !write {
+	if !in.Write {
 		return ScaffoldWorkflowResult{Workflow: workflow, Hinfra: hinfra, Checklist: checklist}, nil
 	}
 	files := map[string]string{
@@ -101,12 +172,20 @@ func ScaffoldWorkflow(env *Env, appOverride string, write bool) (ScaffoldWorkflo
 func buildChecklist(app *appctx.AppContext) []string {
 	items := []string{}
 	if app.IsMonorepo() {
+		bc := app.BuildContexts
+		if len(bc) == 0 {
+			bc = appctx.DefaultBuildContexts()
+		}
 		for _, component := range []string{"api", "web"} {
-			dockerfile := filepath.Join(app.ProjectRepo, component, "Dockerfile")
-			if _, err := os.Stat(dockerfile); err != nil {
-				items = append(items, fmt.Sprintf("%s/Dockerfile ausente", component))
+			ctx, ok := bc[component]
+			if !ok {
+				continue
+			}
+			dockerPath := filepath.Join(app.ProjectRepo, ctx.File)
+			if _, err := os.Stat(dockerPath); err != nil {
+				items = append(items, fmt.Sprintf("Dockerfile ausente: %s (buildContexts.%s.file)", ctx.File, component))
 			} else {
-				items = append(items, fmt.Sprintf("%s/Dockerfile presente", component))
+				items = append(items, fmt.Sprintf("Dockerfile presente: %s", ctx.File))
 			}
 		}
 	} else {
@@ -129,6 +208,9 @@ func buildChecklist(app *appctx.AppContext) []string {
 		owner, repo, _ := git.ParseOriginURL(mustOrigin(app.ProjectRepo))
 		items = append(items, fmt.Sprintf("INFRA_REPO_TOKEN ausente — rode: gh secret set INFRA_REPO_TOKEN --repo %s/%s --body \"<PAT>\"", owner, repo))
 	}
+	items = append(items, "Pacotes GHCR: tornar públicos (Package settings) ou configurar imagePullSecret no namespace")
+	items = append(items, "Após gravar Application no infra: hinfra argocd refresh --root")
+	items = append(items, "Postgres compartilhado: criar role/DB — ver docs/08-data-services.md (infra_docs read 08-data-services.md)")
 	return items
 }
 

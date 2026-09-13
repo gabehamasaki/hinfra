@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
 	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
 	"github.com/gabehamasaki/infra/tools/hinfra/internal/config"
 	"github.com/gabehamasaki/infra/tools/hinfra/internal/git"
 	"github.com/gabehamasaki/infra/tools/hinfra/internal/mcpinstall"
+	"github.com/gabehamasaki/infra/tools/hinfra/internal/scaffold"
 )
 
 func RunMachine() error {
@@ -29,6 +31,9 @@ func RunMachine() error {
 		return err
 	}
 	fmt.Println("Config salva em ~/.config/hinfra/config.yaml")
+	if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".config", "infra-mcp", "config.yaml")); err == nil {
+		fmt.Println("Migre a config legada: mv ~/.config/infra-mcp/config.yaml ~/.config/hinfra/config.yaml")
+	}
 	fmt.Print("Configurar MCP nos agents? [y/N]: ")
 	ans, _ := reader.ReadString('\n')
 	if strings.TrimSpace(strings.ToLower(ans)) == "y" {
@@ -62,10 +67,23 @@ func RunProject(env *actions.Env) error {
 	if line, _ := reader.ReadString('\n'); strings.TrimSpace(line) != "" {
 		exposure = strings.TrimSpace(line)
 	}
+	monorepo := false
+	fmt.Print("Monorepo api+web? [y/N]: ")
+	if strings.TrimSpace(strings.ToLower(readLine(reader))) == "y" {
+		monorepo = true
+	}
+	buildContexts := appctx.DefaultBuildContexts()
+	if monorepo {
+		fmt.Print("Layout Docker (1=api/web, 2=backend/frontend) [1]: ")
+		switch strings.TrimSpace(readLine(reader)) {
+		case "2":
+			buildContexts = appctx.BackendFrontendBuildContexts()
+		}
+	}
 
 	fmt.Println("\n--- Preview manifestos infra ---")
 	appOut, err := actions.ScaffoldApp(env, actions.ScaffoldAppInput{
-		Name: name, Host: host, Exposure: exposure, Write: false,
+		Name: name, Host: host, Exposure: exposure, Write: false, Monorepo: monorepo,
 	})
 	if err != nil {
 		return err
@@ -77,29 +95,9 @@ func RunProject(env *actions.Env) error {
 
 	fmt.Print("\nGravar manifestos no repo infra? [y/N]: ")
 	if strings.TrimSpace(strings.ToLower(readLine(reader))) == "y" {
-		_, err := actions.ScaffoldApp(env, actions.ScaffoldAppInput{
-			Name: name, Host: host, Exposure: exposure, Write: true,
+		out, err := actions.ScaffoldApp(env, actions.ScaffoldAppInput{
+			Name: name, Host: host, Exposure: exposure, Write: true, Monorepo: monorepo,
 		})
-		if err != nil {
-			return err
-		}
-		fmt.Println("Manifestos gravados no repo infra")
-	}
-
-	// Temporarily set app context via hinfra.yml preview
-	hinfraPath := filepath.Join(cwd, "hinfra.yml")
-	if _, err := os.Stat(hinfraPath); os.IsNotExist(err) {
-		_, err := actions.ScaffoldWorkflow(env, name, false)
-		if err == nil {
-			fmt.Println("\n--- Preview workflow ---")
-		}
-	}
-
-	fmt.Print("Gravar workflow + hinfra.yml no projeto? [y/N]: ")
-	if strings.TrimSpace(strings.ToLower(readLine(reader))) == "y" {
-		// Write minimal hinfra.yml first so resolve works
-		writeMinimalHinfra(cwd, name, host, exposure)
-		out, err := actions.ScaffoldWorkflow(env, name, true)
 		if err != nil {
 			return err
 		}
@@ -109,7 +107,43 @@ func RunProject(env *actions.Env) error {
 		}
 	}
 
-	printChecklist(name, host, exposure)
+	hinfraPath := filepath.Join(cwd, "hinfra.yml")
+	if _, err := os.Stat(hinfraPath); os.IsNotExist(err) {
+		fmt.Println("\n--- Preview workflow ---")
+		previewEnv := *env
+		if monorepo {
+			writeMinimalHinfraMonorepo(cwd, name, host, exposure, buildContexts)
+			previewEnv.CWD = cwd
+		}
+		out, err := actions.ScaffoldWorkflow(&previewEnv, actions.ScaffoldWorkflowInput{
+			AppOverride: name, Write: false, Monorepo: monorepo,
+		})
+		if err == nil {
+			fmt.Println(out.Hinfra)
+			fmt.Println(out.Workflow)
+		}
+	}
+
+	fmt.Print("Gravar workflow + hinfra.yml no projeto? [y/N]: ")
+	if strings.TrimSpace(strings.ToLower(readLine(reader))) == "y" {
+		if monorepo {
+			writeMinimalHinfraMonorepo(cwd, name, host, exposure, buildContexts)
+		} else {
+			writeMinimalHinfra(cwd, name, host, exposure)
+		}
+		out, err := actions.ScaffoldWorkflow(env, actions.ScaffoldWorkflowInput{
+			AppOverride: name, Write: true, Monorepo: monorepo,
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Println(out.Message)
+		for _, c := range out.Checklist {
+			fmt.Println("-", c)
+		}
+	}
+
+	printChecklist(name, host, exposure, monorepo)
 	return nil
 }
 
@@ -139,15 +173,39 @@ exposure: %s
 	_ = os.WriteFile(filepath.Join(cwd, "hinfra.yml"), []byte(content), 0o644)
 }
 
-func printChecklist(name, host, exposure string) {
+func writeMinimalHinfraMonorepo(cwd, name, host, exposure string, buildContexts map[string]appctx.BuildContext) {
+	content := scaffold.RenderHinfra(scaffold.HinfraParams{
+		App: name, Host: host, Exposure: exposure,
+		AppPath: "apps/" + name, Namespace: name,
+		Images: map[string]string{
+			"api": "gabehamasaki/" + name + "-api",
+			"web": "gabehamasaki/" + name + "-web",
+		},
+		BuildContexts: buildContexts,
+		Routing:       &appctx.HinfraRouting{ApiPath: "/api", WebPath: "/"},
+	})
+	_ = os.WriteFile(filepath.Join(cwd, "hinfra.yml"), []byte(content), 0o644)
+}
+
+func printChecklist(name, host, exposure string, monorepo bool) {
 	fmt.Println("\n=== Checklist ===")
-	fmt.Println("[ ] Dockerfile na raiz (ou api/ + web/)")
+	if monorepo {
+		fmt.Println("[ ] Dockerfiles nos paths de buildContexts (ver hinfra.yml)")
+	} else {
+		fmt.Println("[ ] Dockerfile na raiz")
+	}
 	fmt.Printf("[ ] gh secret set INFRA_REPO_TOKEN --repo <owner>/%s\n", name)
+	fmt.Println("[ ] Pacotes GHCR públicos ou imagePullSecret")
+	fmt.Println("[ ] hinfra argocd refresh --root (após Application no infra)")
+	if monorepo {
+		fmt.Println("[ ] Postgres: role/DB — docs/08-data-services.md")
+		fmt.Println("[ ] hinfra seal secret → sealed-secret.yaml no kustomization")
+	}
 	if exposure == "public" {
 		fmt.Println("[ ] DNS no Cloudflare → 187.127.62.20")
 	} else {
 		fmt.Println("[ ] DNS no Cloudflare → 100.86.241.1 (tailnet)")
 	}
 	fmt.Println("[ ] git push em ambos os repos")
-	fmt.Println("[ ] hinfra deploy status")
+	fmt.Println("[ ] Primeiro deploy: CI bump SHA → sync Argo → migration PreSync → hinfra deploy status")
 }

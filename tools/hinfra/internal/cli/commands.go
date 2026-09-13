@@ -170,6 +170,7 @@ func newRestartCmd() *cobra.Command {
 
 func newArgoCDCmd() *cobra.Command {
 	var app string
+	var root bool
 	cmd := &cobra.Command{Use: "argocd", Short: "Comandos ArgoCD"}
 	refresh := &cobra.Command{
 		Use:   "refresh",
@@ -178,7 +179,13 @@ func newArgoCDCmd() *cobra.Command {
 			env := loadEnvValidated()
 			ctx, cancel := ctx60()
 			defer cancel()
-			out, err := actions.ArgoCDRefresh(ctx, env, app)
+			var out actions.ArgoCDRefreshResult
+			var err error
+			if root {
+				out, err = actions.ArgoCDRefreshRoot(ctx, env)
+			} else {
+				out, err = actions.ArgoCDRefresh(ctx, env, app)
+			}
 			if err != nil {
 				fatal(err)
 			}
@@ -190,7 +197,50 @@ func newArgoCDCmd() *cobra.Command {
 		},
 	}
 	refresh.Flags().StringVar(&app, "app", "", "override do app")
+	refresh.Flags().BoolVar(&root, "root", false, "refresh hard no root-app (novo Application em clusters/production/apps)")
 	cmd.AddCommand(refresh)
+	return cmd
+}
+
+func newSealCmd() *cobra.Command {
+	var app, ns, input, output string
+	var execute bool
+	cmd := &cobra.Command{
+		Use:   "seal",
+		Short: "Sealed Secrets via kubeseal",
+	}
+	secret := &cobra.Command{
+		Use:   "secret",
+		Short: "Criptografa Secret em sealed-secret.yaml",
+		Run: func(_ *cobra.Command, _ []string) {
+			env := loadEnvValidated()
+			out, err := actions.SealSecret(env, actions.SealSecretInput{
+				AppOverride: app, Namespace: ns, InputFile: input, OutputFile: output, Execute: execute,
+			})
+			if err != nil {
+				fatal(err)
+			}
+			if err := printOrJSON(out, func() {
+				if out.Command != "" {
+					fmt.Println(out.Command)
+				}
+				if out.Message != "" {
+					fmt.Println(out.Message)
+				}
+				if out.WroteTo != "" {
+					fmt.Println(out.WroteTo)
+				}
+			}); err != nil {
+				fatal(err)
+			}
+		},
+	}
+	secret.Flags().StringVar(&app, "app", "", "override do app")
+	secret.Flags().StringVar(&ns, "namespace", "", "namespace do Secret")
+	secret.Flags().StringVarP(&input, "file", "f", "", "Secret kubernetes em yaml (plaintext local)")
+	secret.Flags().StringVarP(&output, "output", "o", "", "caminho de saída no repo infra")
+	secret.Flags().BoolVar(&execute, "execute", false, "executar kubeseal (senão só preview)")
+	cmd.AddCommand(secret)
 	return cmd
 }
 
@@ -229,6 +279,7 @@ func newScaffoldCmd() *cobra.Command {
 	var name, host, exposure, cpu, memReq, memLim string
 	var port int
 	var writeApp bool
+	var monorepoApp bool
 	appCmd.Flags().StringVar(&name, "name", "", "nome do app")
 	appCmd.Flags().StringVar(&host, "host", "", "host")
 	appCmd.Flags().IntVar(&port, "container-port", 8080, "porta")
@@ -237,12 +288,13 @@ func newScaffoldCmd() *cobra.Command {
 	appCmd.Flags().StringVar(&memLim, "memory-limit", "", "memory limit")
 	appCmd.Flags().StringVar(&exposure, "exposure", "public", "public ou tailnet")
 	appCmd.Flags().BoolVar(&writeApp, "write", false, "gravar arquivos")
+	appCmd.Flags().BoolVar(&monorepoApp, "monorepo", false, "api+web (schedule-visits pattern)")
 	appCmd.Run = func(_ *cobra.Command, _ []string) {
 		env := loadEnv()
 		out, err := actions.ScaffoldApp(env, actions.ScaffoldAppInput{
 			Name: name, Host: host, ContainerPort: port,
 			CPURequest: cpu, MemoryRequest: memReq, MemoryLimit: memLim,
-			Exposure: exposure, Write: writeApp,
+			Exposure: exposure, Write: writeApp, Monorepo: monorepoApp,
 		})
 		if err != nil {
 			fatal(err)
@@ -252,17 +304,24 @@ func newScaffoldCmd() *cobra.Command {
 			if out.DNS != "" {
 				fmt.Println(out.DNS)
 			}
+			for _, c := range out.Checklist {
+				fmt.Println("-", c)
+			}
 		}); err != nil {
 			fatal(err)
 		}
 	}
 	wf := &cobra.Command{Use: "workflow", Short: "Workflow e hinfra.yml no projeto"}
 	var app string
+	var monorepo bool
 	wf.Flags().StringVar(&app, "app", "", "override do app")
+	wf.Flags().BoolVar(&monorepo, "monorepo", false, "gerar template api+web mesmo sem hinfra.yml")
 	wf.Flags().BoolVar(&write, "write", false, "gravar arquivos")
 	wf.Run = func(_ *cobra.Command, _ []string) {
 		env := loadEnvValidated()
-		out, err := actions.ScaffoldWorkflow(env, app, write)
+		out, err := actions.ScaffoldWorkflow(env, actions.ScaffoldWorkflowInput{
+			AppOverride: app, Write: write, Monorepo: monorepo,
+		})
 		if err != nil {
 			fatal(err)
 		}

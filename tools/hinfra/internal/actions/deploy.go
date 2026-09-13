@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/gabehamasaki/infra/tools/hinfra/internal/argocd"
 	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
@@ -49,7 +50,9 @@ func DeployStatus(ctx context.Context, env *Env, appOverride string) (DeployStat
 		return DeployStatusResult{Step: 3, OK: false, Detail: err.Error(), SHA: sha}, nil
 	}
 	if st.Sync != "Synced" || st.Health != "Healthy" {
-		return DeployStatusResult{Step: 3, OK: false, Detail: argocd.FormatAppStatus(st), SHA: sha}, nil
+		detail := argocd.FormatAppStatus(st)
+		detail += deployStatusHints(st)
+		return DeployStatusResult{Step: 3, OK: false, Detail: detail, SHA: sha}, nil
 	}
 	pods, err := k8s.ListPods(ctx, kc, app.Namespace)
 	if err != nil {
@@ -66,4 +69,19 @@ func DeployStatus(ctx context.Context, env *Env, appOverride string) (DeployStat
 		}, nil
 	}
 	return DeployStatusResult{Step: 4, OK: true, Detail: "deploy completo", SHA: sha}, nil
+}
+
+func deployStatusHints(st *argocd.ApplicationStatus) string {
+	var hints []string
+	if st.Sync == "OutOfSync" {
+		hints = append(hints, "aguarde sync automático ou sync manual no Argo")
+	}
+	if st.Health == "Progressing" {
+		hints = append(hints, "estado transitório (migration/sync) — repita deploy status em alguns minutos")
+	}
+	if st.Sync != "Synced" {
+		hints = append(hints, "sync preso? termine operação antiga no UI do ArgoCD")
+	}
+	hints = append(hints, "Application novo no infra exige: hinfra argocd refresh --root")
+	return "; " + strings.Join(hints, "; ")
 }

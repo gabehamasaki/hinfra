@@ -29,15 +29,20 @@ type WorkflowParams struct {
 }
 
 type MonorepoWorkflowParams struct {
-	AppPath string
-	Images  map[string]string
+	AppPath       string
+	Images        map[string]string
+	BuildContexts map[string]appctx.BuildContext
 }
 
 const (
-	workflowPlaceholderAppPath = "apps/CHANGE-ME"
-	workflowPlaceholderImage   = "gabehamasaki/CHANGE-ME"
-	workflowPlaceholderAPI     = "gabehamasaki/CHANGE-ME-api"
-	workflowPlaceholderWeb     = "gabehamasaki/CHANGE-ME-web"
+	workflowPlaceholderAppPath      = "apps/CHANGE-ME"
+	workflowPlaceholderImage        = "gabehamasaki/CHANGE-ME"
+	workflowPlaceholderAPI          = "gabehamasaki/CHANGE-ME-api"
+	workflowPlaceholderWeb          = "gabehamasaki/CHANGE-ME-web"
+	workflowPlaceholderContextAPI   = "BUILD_CONTEXT_API"
+	workflowPlaceholderFileAPI      = "BUILD_FILE_API"
+	workflowPlaceholderContextWeb   = "BUILD_CONTEXT_WEB"
+	workflowPlaceholderFileWeb      = "BUILD_FILE_WEB"
 )
 
 func WorkflowTemplateName(monorepo bool) string {
@@ -62,18 +67,31 @@ func RenderMonorepoWorkflow(templateContent string, p MonorepoWorkflowParams) st
 	if web, ok := p.Images["web"]; ok {
 		out = strings.ReplaceAll(out, workflowPlaceholderWeb, web)
 	}
+	bc := p.BuildContexts
+	if len(bc) == 0 {
+		bc = appctx.DefaultBuildContexts()
+	}
+	if apiBC, ok := bc["api"]; ok {
+		out = strings.ReplaceAll(out, workflowPlaceholderContextAPI, apiBC.Context)
+		out = strings.ReplaceAll(out, workflowPlaceholderFileAPI, apiBC.File)
+	}
+	if webBC, ok := bc["web"]; ok {
+		out = strings.ReplaceAll(out, workflowPlaceholderContextWeb, webBC.Context)
+		out = strings.ReplaceAll(out, workflowPlaceholderFileWeb, webBC.File)
+	}
 	return out
 }
 
 type HinfraParams struct {
-	App       string
-	Image     string
-	Images    map[string]string
-	AppPath   string
-	Namespace string
-	Host      string
-	Exposure  string
-	Routing   *appctx.HinfraRouting
+	App           string
+	Image         string
+	Images        map[string]string
+	BuildContexts map[string]appctx.BuildContext
+	AppPath       string
+	Namespace     string
+	Host          string
+	Exposure      string
+	Routing       *appctx.HinfraRouting
 }
 
 func RenderAppFiles(p AppParams) (map[string]string, error) {
@@ -128,6 +146,9 @@ func RenderHinfra(p HinfraParams) string {
 	}
 	if len(p.Images) > 0 {
 		fields["images"] = p.Images
+		if len(p.BuildContexts) > 0 {
+			fields["buildContexts"] = p.BuildContexts
+		}
 		if p.Routing != nil {
 			fields["routing"] = p.Routing
 		}
