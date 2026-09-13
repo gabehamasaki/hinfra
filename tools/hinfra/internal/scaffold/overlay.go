@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
 )
 
 // AppendEnvironmentOverlayFiles adds overlay kustomizations and Argo Applications for enabled non-production environments.
@@ -95,7 +95,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/gabehamasaki/infra.git
+    repoURL: https://github.com/gabehamasaki/hinfra.git
     targetRevision: main
     path: %s
   destination:

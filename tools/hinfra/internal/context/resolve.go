@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/git"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/git"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,12 +21,20 @@ func (e *ResolveError) Error() string {
 }
 
 type Resolver struct {
-	InfraRepo  string
-	Kubeconfig string
+	InfraRepo     string
+	WorkloadsRepo string
+	Kubeconfig    string
 }
 
-func NewResolver(infraRepo, kubeconfig string) *Resolver {
-	return &Resolver{InfraRepo: infraRepo, Kubeconfig: kubeconfig}
+func NewResolver(infraRepo, workloadsRepo, kubeconfig string) *Resolver {
+	return &Resolver{InfraRepo: infraRepo, WorkloadsRepo: workloadsRepo, Kubeconfig: kubeconfig}
+}
+
+func (r *Resolver) AppsRepo() string {
+	if r.WorkloadsRepo != "" {
+		return r.WorkloadsRepo
+	}
+	return r.InfraRepo
 }
 
 func (r *Resolver) Resolve(cwd string, appOverride string) (*AppContext, error) {
@@ -73,7 +81,7 @@ func (r *Resolver) Resolve(cwd string, appOverride string) (*AppContext, error) 
 		namespace = hinfra.Namespace
 	}
 
-	kustomPath := filepath.Join(r.InfraRepo, appPath, "kustomization.yaml")
+	kustomPath := filepath.Join(r.AppsRepo(), appPath, "kustomization.yaml")
 	kustImages, kustErr := parseKustomizationImages(kustomPath)
 
 	if appOverride == "" {
@@ -96,7 +104,7 @@ func (r *Resolver) Resolve(cwd string, appOverride string) (*AppContext, error) 
 	ctx := &AppContext{
 		Name:          appName,
 		Namespace:     namespace,
-		InfraRepo:     r.InfraRepo,
+		InfraRepo:     r.AppsRepo(),
 		ProjectRepo:   projectRepo,
 		Image:         imageName,
 		ImageRef:      ImageRegistry + "/" + imageName,

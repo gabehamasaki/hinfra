@@ -7,17 +7,17 @@ import (
 	"path/filepath"
 	"strings"
 
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/config"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/git"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/mcpinstall"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/scaffold"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/config"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/git"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/mcpinstall"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/scaffold"
 )
 
 func RunMachine() error {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Caminho do repo infra: ")
+	fmt.Print("Caminho do repo hinfra (kit): ")
 	infraRepo, _ := reader.ReadString('\n')
 	infraRepo = strings.TrimSpace(infraRepo)
 	if infraRepo == "" {
@@ -27,7 +27,17 @@ func RunMachine() error {
 	if err != nil {
 		return err
 	}
-	if err := config.Save(abs); err != nil {
+	fmt.Print("Caminho do repo hinfra-workloads (privado; Enter = mesmo que hinfra): ")
+	workloadsIn, _ := reader.ReadString('\n')
+	workloadsRepo := strings.TrimSpace(workloadsIn)
+	workloadsAbs := abs
+	if workloadsRepo != "" {
+		workloadsAbs, err = filepath.Abs(workloadsRepo)
+		if err != nil {
+			return err
+		}
+	}
+	if err := config.Save(abs, workloadsAbs); err != nil {
 		return err
 	}
 	fmt.Println("Config salva em ~/.config/hinfra/config.yaml")
@@ -194,7 +204,7 @@ func printChecklist(name, host, exposure string, monorepo bool) {
 	} else {
 		fmt.Println("[ ] Dockerfile na raiz")
 	}
-	fmt.Printf("[ ] gh secret set INFRA_REPO_TOKEN --repo <owner>/%s\n", name)
+	fmt.Printf("[ ] gh secret set HINFRA_WORKLOADS_TOKEN --repo <owner>/%s\n", name)
 	fmt.Println("[ ] Pacotes GHCR públicos ou imagePullSecret")
 	fmt.Println("[ ] hinfra argocd refresh --root (após Application no infra)")
 	if monorepo {

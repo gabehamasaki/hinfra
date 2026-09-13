@@ -194,7 +194,7 @@ Causas comuns:
 Validar o token:
 
 ```bash
-curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/347d85d3ee7db762e6af1cdfb874f8e8/tokens/verify" \
+curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/<CF_ACCOUNT_ID>/tokens/verify" \
   -H "Authorization: Bearer <token>"
 ```
 

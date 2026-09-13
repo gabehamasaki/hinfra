@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/initwizard"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/mcpinstall"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/initwizard"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/mcpinstall"
 	"github.com/spf13/cobra"
 )
 

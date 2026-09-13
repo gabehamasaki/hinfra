@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/git"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/git"
 )
 
 type RollbackResult struct {

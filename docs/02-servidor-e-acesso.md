@@ -7,8 +7,8 @@
 | Provedor | Hostinger, plano KVM 2 |
 | ID da VM (API Hostinger) | `1957194` |
 | Hostname | `srv1957194` |
-| IP público | `187.127.62.20` |
-| IP na tailnet | `100.86.241.1` |
+| IP público | `<VPS_PUBLIC_IP>` |
+| IP na tailnet | `<TAILNET_IP>` |
 | SO | Ubuntu 24.04.4 LTS (kernel 6.8.0) |
 | CPU / RAM / Disco | 2 vCPU · 8 GB · 96 GB |
 
@@ -113,7 +113,7 @@ Estado atual da tailnet:
 
 | Node | IP | O que é |
 | --- | --- | --- |
-| `vps-1` | `100.86.241.1` | A VPS |
+| `vps-1` | `<TAILNET_IP>` | A VPS |
 | `Hamasaki` | `100.88.60.121` | Máquina local de desenvolvimento |
 
 ## DNS
@@ -122,16 +122,16 @@ Os dois domínios são registrados na Hostinger, mas o DNS autoritativo é o **C
 
 | Zona | Zone ID | Uso |
 | --- | --- | --- |
-| `hamasakis.cloud` | `ded3ce7e7409f60c8bf9237d162b0567` | Serviços de plataforma |
-| `hamasakis.dev` | `309444199a321bb566c99880ec5f2d5e` | Projetos |
+| `hamasakis.cloud` | `<CF_ZONE_INFRA>` | Serviços de plataforma |
+| `hamasakis.dev` | `<CF_ZONE_APPS>` | Projetos |
 
 ### Registros que importam
 
 | Registro | Aponta para | Proxy | Alcance |
 | --- | --- | --- | --- |
-| `hamasakis.dev` (apex) | `187.127.62.20` (público) | Não | Internet |
-| `argocd.hamasakis.cloud` | `100.86.241.1` (tailnet) | Não | Só tailnet |
-| `s3.hamasakis.cloud` | `100.86.241.1` (tailnet) | Não | Só tailnet |
+| `hamasakis.dev` (apex) | `<VPS_PUBLIC_IP>` (público) | Não | Internet |
+| `argocd.hamasakis.cloud` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
+| `s3.hamasakis.cloud` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 
 Os registros de e-mail de `hamasakis.dev` (MX, SPF, DKIM, DMARC, apontando para o Hostinger Mail) **não foram tocados** e não devem ser.
 
@@ -165,12 +165,12 @@ Se o `1.1.1.1` responde certo e a sua máquina não, é cache local ou do proved
 ### SSH
 
 ```bash
-ssh vps          # ~/.ssh/config aponta para deploy@187.127.62.20 com a chave dedicada
+ssh vps          # ~/.ssh/config aponta para deploy@<VPS_PUBLIC_IP> com a chave dedicada
 ```
 
 ```
 Host vps
-   HostName 187.127.62.20
+   HostName <VPS_PUBLIC_IP>
    User deploy
    Port 22
    IdentityFile "/home/hamasaki/www/infra/.secrets/vps-1_deploy_ed25519"
@@ -178,7 +178,7 @@ Host vps
 
 ### kubectl
 
-Exige estar na tailnet — o kubeconfig aponta para o IP `100.86.241.1`, não para o público.
+Exige estar na tailnet — o kubeconfig aponta para o IP `<TAILNET_IP>`, não para o público.
 
 ```bash
 tailscale up                                                # se ainda não estiver conectado
@@ -206,7 +206,7 @@ O script descobre o usuário do Windows, copia o kubeconfig e avisa se o Tailsca
 Verificar se o Windows alcança a API antes de abrir o Lens:
 
 ```bash
-'/mnt/c/Windows/System32/curl.exe' -sk -o /dev/null -w "%{http_code}\n" https://100.86.241.1:6443/version
+'/mnt/c/Windows/System32/curl.exe' -sk -o /dev/null -w "%{http_code}\n" https://<TAILNET_IP>:6443/version
 ```
 
 `401` é a resposta certa — significa que a API respondeu e só faltou credencial. Timeout significa que o Tailscale do Windows está desconectado.

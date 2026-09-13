@@ -115,8 +115,8 @@ O registro DNS acompanha a decisão:
 
 | Alcance | Aponta para |
 | --- | --- |
-| Público | `187.127.62.20` |
-| Tailnet | `100.86.241.1` |
+| Público | `<VPS_PUBLIC_IP>` |
+| Tailnet | `<TAILNET_IP>` |
 
 Publicar um IP de tailnet no DNS público é seguro e intencional: a faixa `100.64.0.0/10` é CGNAT e não é roteável pela internet. Isso evita ter que editar `/etc/hosts` em cada dispositivo.
 

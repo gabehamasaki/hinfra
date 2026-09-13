@@ -1,0 +1,24 @@
+# Example CloudNativePG cluster for adopters. Copy to your private workloads repo
+# and adjust storage, resources, and credentials (see docs/08-data-services.md).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+  namespace: postgres
+spec:
+  instances: 1
+  superuserSecret:
+    name: postgres-superuser
+  storage:
+    size: 4Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  bootstrap:
+    initdb:
+      database: app
+      owner: app

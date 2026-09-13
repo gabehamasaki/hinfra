@@ -103,7 +103,7 @@ A propriedade que define onde eles moram: precisam estar acessíveis quando **ta
 Se surgir a pergunta "posso guardar no RustFS / na VPS / num repo privado?", a resposta é não, por motivos distintos:
 
 - **RustFS ou VPS** — backup guardado dentro daquilo que ele restaura não é backup. A master key existe para reconstruir um cluster perdido; dentro do cluster, ela some justamente quando serviria. E a senha do vault na VPS expande o raio de um comprometimento: de "ganhou a VPS" para "ganhou Cloudflare, Tailscale e GitHub junto".
-- **Repositório privado no GitHub** — privado não é criptografado, é texto puro com controle de acesso; o histórico do Git é permanente; e o `vault_infra_repo_token` (um PAT do GitHub) mora *dentro* do vault, então guardar a senha que o abre no GitHub faz uma única conta comprometida cascatear para tudo.
+- **Repositório privado no GitHub** — privado não é criptografado, é texto puro com controle de acesso; o histórico do Git é permanente; e o `vault_workloads_repo_token` (um PAT do GitHub) mora *dentro* do vault, então guardar a senha que o abre no GitHub faz uma única conta comprometida cascatear para tudo.
 
 Dados de **backup** (dumps do k3s) são outra classe e vão para o R2 — automatizados, grandes, escritos por máquina. A distinção está em `docs/05-segredos.md`.
 

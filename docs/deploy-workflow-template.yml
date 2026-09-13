@@ -1,6 +1,6 @@
 # Template de referência - copie para `.github/workflows/deploy.yml` no repo do projeto.
 # Deploy apenas no push de tag (commit na branch do ambiente; default main). Prefixos: v*, dev/**, hg/**.
-# Requer INFRA_REPO_TOKEN (PAT fine-grained no repo infra, Contents Read/Write).
+# Requer HINFRA_WORKLOADS_TOKEN (PAT fine-grained no repo hinfra-workloads, Contents Read/Write).
 name: deploy
 
 on:
@@ -69,32 +69,32 @@ DEPLOY_BRANCH_MAP
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
 
-      - name: Checkout do repo infra
+      - name: Checkout do repo hinfra-workloads
         uses: actions/checkout@v4
         with:
-          repository: gabehamasaki/infra
-          token: ${{ secrets.INFRA_REPO_TOKEN }}
-          path: infra
+          repository: gabehamasaki/hinfra-workloads
+          token: ${{ secrets.HINFRA_WORKLOADS_TOKEN }}
+          path: workloads
 
       - name: Verificar overlay do ambiente
         run: |
           set -euo pipefail
-          kust="infra/${{ steps.meta.outputs.kust_path }}/kustomization.yaml"
+          kust="workloads/${{ steps.meta.outputs.kust_path }}/kustomization.yaml"
           if [ ! -f "$kust" ]; then
-            echo "ambiente ${{ steps.meta.outputs.deploy_env }} não provisionado no infra ($kust ausente)"
+            echo "ambiente ${{ steps.meta.outputs.deploy_env }} não provisionado no workloads ($kust ausente)"
             exit 1
           fi
 
       - name: Instalar kustomize
         uses: imranismail/setup-kustomize@v2
 
-      - name: Atualizar a tag da imagem no repo infra
-        working-directory: infra/${{ steps.meta.outputs.kust_path }}
+      - name: Atualizar a tag da imagem no repo workloads
+        working-directory: workloads/${{ steps.meta.outputs.kust_path }}
         run: |
           kustomize edit set image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
 
-      - name: Commit e push no repo infra
-        working-directory: infra
+      - name: Commit e push no repo workloads
+        working-directory: workloads
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

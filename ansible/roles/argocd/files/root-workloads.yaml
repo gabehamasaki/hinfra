@@ -1,17 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: study
+  name: workloads-root
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: https://github.com/gabehamasaki/infra.git
+    repoURL: https://github.com/gabehamasaki/hinfra-workloads.git
     targetRevision: main
-    path: apps/study
+    path: clusters/production/apps
+    directory:
+      recurse: true
   destination:
     server: https://kubernetes.default.svc
-    namespace: study
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true

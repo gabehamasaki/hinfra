@@ -7,22 +7,23 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/config"
-	mcpsrv "github.com/gabehamasaki/infra/tools/hinfra/internal/mcp"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tailnet"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/config"
+	mcpsrv "github.com/gabehamasaki/hinfra/tools/hinfra/internal/mcp"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tailnet"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
 
-const version = "0.1.0"
+// Version is set at link time via -ldflags (see .goreleaser.yaml).
+var Version = "dev"
 
 func NewRoot() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "hinfra",
-		Short: "CLI, TUI e MCP para infra hamasakis",
+		Short: "CLI, TUI e MCP para o kit hinfra",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if term.IsTerminal(int(os.Stdout.Fd())) {
 				return tui.Run(loadEnv())
@@ -46,6 +47,13 @@ func NewRoot() *cobra.Command {
 	root.AddCommand(newRollbackCmd())
 	root.AddCommand(newScaffoldCmd())
 	root.AddCommand(newSealCmd())
+	root.AddCommand(&cobra.Command{
+		Use:   "version",
+		Short: "Print CLI version",
+		Run: func(_ *cobra.Command, _ []string) {
+			fmt.Println(Version)
+		},
+	})
 	return root
 }
 
@@ -122,7 +130,7 @@ func newMCPCmd() *cobra.Command {
 		Short: "Servidor MCP stdio",
 		Run: func(_ *cobra.Command, _ []string) {
 			env := loadEnvValidated()
-			srv := mcp.NewServer(&mcp.Implementation{Name: "infra", Version: version}, nil)
+			srv := mcp.NewServer(&mcp.Implementation{Name: "hinfra", Version: Version}, nil)
 			mcpsrv.Register(srv, env)
 			if err := srv.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 				fatal(err)

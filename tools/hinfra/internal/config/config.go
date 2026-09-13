@@ -4,23 +4,34 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	DefaultTailnetAPI = "100.86.241.1:6443"
+	DefaultTailnetAPI = "<TAILNET_IP>:6443"
 	KubeconfigName    = "vps-1.kubeconfig"
 )
 
 type Config struct {
-	InfraRepo string `yaml:"infraRepo"`
+	InfraRepo     string `yaml:"infraRepo"`
+	WorkloadsRepo string `yaml:"workloadsRepo"`
 }
 
 type Runtime struct {
-	InfraRepo  string
-	Kubeconfig string
-	TailnetAPI string
+	InfraRepo     string
+	WorkloadsRepo string
+	Kubeconfig    string
+	TailnetAPI    string
+}
+
+// AppsRepo is where GitOps app manifests and kustomization.yaml live (often a private workloads repo).
+func (r *Runtime) AppsRepo() string {
+	if r.WorkloadsRepo != "" {
+		return r.WorkloadsRepo
+	}
+	return r.InfraRepo
 }
 
 func ConfigPath() string {
@@ -61,21 +72,29 @@ func Load() (*Runtime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("infraRepo inválido: %w", err)
 	}
+	workloadsRepo := infraRepo
+	if strings.TrimSpace(cfg.WorkloadsRepo) != "" {
+		workloadsRepo, err = filepath.Abs(cfg.WorkloadsRepo)
+		if err != nil {
+			return nil, fmt.Errorf("workloadsRepo inválido: %w", err)
+		}
+	}
 
 	return &Runtime{
-		InfraRepo:  infraRepo,
-		Kubeconfig: filepath.Join(infraRepo, ".secrets", KubeconfigName),
-		TailnetAPI: DefaultTailnetAPI,
+		InfraRepo:     infraRepo,
+		WorkloadsRepo: workloadsRepo,
+		Kubeconfig:    filepath.Join(infraRepo, ".secrets", KubeconfigName),
+		TailnetAPI:    DefaultTailnetAPI,
 	}, nil
 }
 
-func Save(infraRepo string) error {
+func Save(infraRepo, workloadsRepo string) error {
 	dir := filepath.Join(os.Getenv("HOME"), ".config", "hinfra")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	path := filepath.Join(dir, "config.yaml")
-	cfg := Config{InfraRepo: infraRepo}
+	cfg := Config{InfraRepo: infraRepo, WorkloadsRepo: workloadsRepo}
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return err
@@ -86,6 +105,9 @@ func Save(infraRepo string) error {
 func (r *Runtime) ValidateFiles() error {
 	if _, err := os.Stat(r.InfraRepo); err != nil {
 		return fmt.Errorf("infraRepo não encontrado em %s: %w", r.InfraRepo, err)
+	}
+	if _, err := os.Stat(r.AppsRepo()); err != nil {
+		return fmt.Errorf("workloadsRepo não encontrado em %s: %w", r.AppsRepo(), err)
 	}
 	if _, err := os.Stat(r.Kubeconfig); err != nil {
 		return fmt.Errorf("kubeconfig não encontrado em %s: %w", r.Kubeconfig, err)

@@ -95,14 +95,14 @@ routing:
 **5. Secret do CI:**
 
 ```bash
-gh secret set INFRA_REPO_TOKEN --repo gabehamasaki/<projeto> --body "<PAT>"
+gh secret set HINFRA_WORKLOADS_TOKEN --repo gabehamasaki/<projeto> --body "<PAT>"
 ```
 
 PAT fine-grained restrito ao repo `infra`, permissão `Contents: Read and write`. Um PAT clássico com escopo `repo` daria acesso a todos os repositórios da conta — escopo desnecessário para bumpar uma tag.
 
 ### Fora dos repositórios
 
-**6. DNS** no Cloudflare. Projeto público aponta para `187.127.62.20`; algo administrativo aponta para `100.86.241.1` (tailnet) e leva a annotation do middleware. Ver a skill `servico-no-cluster`.
+**6. DNS** no Cloudflare. Projeto público aponta para `<VPS_PUBLIC_IP>`; algo administrativo aponta para `<TAILNET_IP>` (tailnet) e leva a annotation do middleware. Ver a skill `servico-no-cluster`.
 
 **7. Imagem privada?** Pacotes do GHCR nascem privados. Ou torne o pacote público (Package settings no GitHub), ou crie um `imagePullSecret` no namespace e referencie no deployment.
 

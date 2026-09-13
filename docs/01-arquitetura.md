@@ -59,7 +59,7 @@ Duas portas de entrada, com regras completamente diferentes:
 **Internet pública** → `:80` / `:443` na interface pública → Traefik → apps de projeto (`*.hamasakis.dev`).
 Serviços de plataforma nesse caminho recebem `403` do middleware do Traefik.
 
-**Tailnet** → IP `100.86.241.1` → Traefik (consoles) ou direto na porta `6443` (API do Kubernetes).
+**Tailnet** → IP `<TAILNET_IP>` → Traefik (consoles) ou direto na porta `6443` (API do Kubernetes).
 É por aqui que passam `kubectl`, o console do ArgoCD e o console do RustFS.
 
 O `ufw` reforça a mesma divisão no nível do host: só `22`, `80` e `443` abertos na interface pública; tudo liberado em `tailscale0`.

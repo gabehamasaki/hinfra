@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
 	"gopkg.in/yaml.v3"
 )
 
@@ -212,9 +212,9 @@ func mustRender(name, tmpl string, data interface{}) (string, error) {
 
 func DNSHint(exposure string) string {
 	if exposure == "tailnet" {
-		return "100.86.241.1"
+		return "<TAILNET_IP>"
 	}
-	return "187.127.62.20"
+	return "<VPS_PUBLIC_IP>"
 }
 
 var deploymentTemplate = `apiVersion: apps/v1
@@ -314,7 +314,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/gabehamasaki/infra.git
+    repoURL: https://github.com/gabehamasaki/hinfra.git
     targetRevision: main
     path: apps/{{ .Name }}
   destination:

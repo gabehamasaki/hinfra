@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/k8s"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/k8s"
 )
 
 type AppHealthResult struct {

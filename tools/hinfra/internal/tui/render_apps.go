@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/argocd"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/components"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/styles"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/argocd"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/components"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/styles"
 )
 
 // layerCycle percorre as camadas e volta para "todas", para uma tecla só dar

@@ -5,13 +5,10 @@
 # histórico do Git continua recuperável mesmo depois de removido, e rotacionar
 # não apaga o valor antigo. O fluxo correto (encrypt -> git add -f) é fácil de
 # executar pela metade, então vale um guardrail.
-#
-# Sai com 2 para bloquear. Emite JSON no stdout para compatibilidade com hooks
-# do Cursor (beforeShellExecution).
 set -uo pipefail
 
 VAULT="ansible/group_vars/all/vault.yml"
-REPO="${CLAUDE_PROJECT_DIR:-$PWD}"
+REPO="$(pwd)"
 
 CMD="$(cat | python3 -c '
 import json, sys
@@ -19,33 +16,22 @@ d = json.load(sys.stdin)
 print(d.get("command") or d.get("tool_input", {}).get("command", ""))
 ' 2>/dev/null || true)"
 
-allow() {
+# Só interessa commit - deixa passar todo o resto sem custo.
+[[ "$CMD" == *"git commit"* ]] || { echo '{"permission":"allow"}'; exit 0; }
+
+# Não está staged: nada a proteger.
+git -C "$REPO" diff --cached --name-only 2>/dev/null | grep -qx "$VAULT" || {
   echo '{"permission":"allow"}'
   exit 0
 }
 
-# Só interessa commit - deixa passar todo o resto sem custo.
-[[ "$CMD" == *"git commit"* ]] || allow
-
-# Não está staged: nada a proteger.
-git -C "$REPO" diff --cached --name-only 2>/dev/null | grep -qx "$VAULT" || allow
-
-if [[ "$(git -C "$REPO" show ":$VAULT" 2>/dev/null | head -1)" == '$ANSIBLE_VAULT'* ]]; then
-  allow
-fi
-
 MESSAGE=$(cat <<EOF
-BLOQUEADO: $VAULT está staged em TEXTO PURO.
+BLOQUEADO: $VAULT não pode ser commitado (repo público).
 
-Commitar isso expõe os segredos no histórico do Git de forma permanente -
-removê-los depois não os torna irrecuperáveis.
+Mantenha vault.yml só na máquina local, fora do Git. Use vault.yml.example como modelo.
 
 Para corrigir:
-  script -qec "ansible-vault encrypt $VAULT --vault-password-file ~/.infra-vault-pass" /dev/null
-  git add -f $VAULT
-
-Confirme antes de tentar de novo:
-  git show ":$VAULT" | head -1    # tem que começar com \$ANSIBLE_VAULT
+  git reset HEAD -- $VAULT
 EOF
 )
 

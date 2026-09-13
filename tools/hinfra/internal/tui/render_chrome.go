@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/components"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/styles"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/components"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/styles"
 )
 
 // renderChrome envolve o conteúdo da scene com barra de status no topo e

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
 )
 
 type MonorepoAppParams struct {

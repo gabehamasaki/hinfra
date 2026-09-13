@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/argocd"
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/git"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/k8s"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/argocd"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/git"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/k8s"
 )
 
 type DeployStatusResult struct {

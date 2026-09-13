@@ -1,0 +1,33 @@
+version: 2
+project_name: hinfra
+
+before:
+  hooks:
+    - go test ./tools/hinfra/...
+
+builds:
+  - id: hinfra
+    dir: tools/hinfra
+    main: ./cmd/hinfra
+    binary: hinfra
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/gabehamasaki/hinfra/tools/hinfra/internal/cli.Version={{.Version}}
+
+archives:
+  - id: hinfra
+    format: binary
+    name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  github:
+    owner: gabehamasaki
+    name: hinfra

@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/styles"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/styles"
 )
 
 const (

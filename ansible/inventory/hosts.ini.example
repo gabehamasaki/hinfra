@@ -1,0 +1,12 @@
+# Copie para hosts.ini (não versionado) e ajuste o IP público da VPS.
+[k3s_server]
+vps-1 ansible_host=<VPS_PUBLIC_IP> tailscale_hostname=vps-1
+
+[k3s_agents]
+
+[k3s_cluster:children]
+k3s_server
+k3s_agents
+
+[k3s_cluster:vars]
+ansible_user=deploy

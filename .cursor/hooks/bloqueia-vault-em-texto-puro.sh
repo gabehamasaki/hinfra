@@ -25,23 +25,13 @@ git -C "$REPO" diff --cached --name-only 2>/dev/null | grep -qx "$VAULT" || {
   exit 0
 }
 
-if [[ "$(git -C "$REPO" show ":$VAULT" 2>/dev/null | head -1)" == '$ANSIBLE_VAULT'* ]]; then
-  echo '{"permission":"allow"}'
-  exit 0
-fi
-
 MESSAGE=$(cat <<EOF
-BLOQUEADO: $VAULT está staged em TEXTO PURO.
+BLOQUEADO: $VAULT não pode ser commitado (repo público).
 
-Commitar isso expõe os segredos no histórico do Git de forma permanente -
-removê-los depois não os torna irrecuperáveis.
+Mantenha vault.yml só na máquina local, fora do Git. Use vault.yml.example como modelo.
 
 Para corrigir:
-  script -qec "ansible-vault encrypt $VAULT --vault-password-file ~/.infra-vault-pass" /dev/null
-  git add -f $VAULT
-
-Confirme antes de tentar de novo:
-  git show ":$VAULT" | head -1    # tem que começar com \$ANSIBLE_VAULT
+  git reset HEAD -- $VAULT
 EOF
 )
 

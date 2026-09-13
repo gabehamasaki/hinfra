@@ -5,10 +5,10 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/argocd"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tailnet"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/store"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/argocd"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tailnet"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/store"
 )
 
 // watchInterval é curto porque o dashboard só faz leituras na API — o custo

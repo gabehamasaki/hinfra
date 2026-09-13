@@ -1,8 +1,8 @@
 package actions
 
 import (
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/config"
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/config"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
 )
 
 type Env struct {
@@ -12,7 +12,7 @@ type Env struct {
 }
 
 func ResolveApp(env *Env, appOverride string) (*appctx.AppContext, error) {
-	resolver := appctx.NewResolver(env.Runtime.InfraRepo, env.Runtime.Kubeconfig)
+	resolver := appctx.NewResolver(env.Runtime.InfraRepo, env.Runtime.WorkloadsRepo, env.Runtime.Kubeconfig)
 	cwd := env.CWD
 	if env.ProjectDir != "" {
 		cwd = env.ProjectDir

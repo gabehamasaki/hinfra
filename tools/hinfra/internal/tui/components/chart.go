@@ -3,7 +3,7 @@ package components
 import (
 	"strings"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/styles"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/styles"
 )
 
 // eighths vai de 1/8 a 8/8 de altura; index 0 representa célula vazia.

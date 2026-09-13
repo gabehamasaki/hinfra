@@ -1,91 +1,58 @@
-# infra
+# hinfra
 
-Repositório único de provisionamento (Ansible) + GitOps (ArgoCD) da infraestrutura em `hamasakis.cloud` / `hamasakis.dev`.
+Kit open-source de provisionamento (Ansible) + GitOps (ArgoCD) para uma VPS com k3s, Tailscale e Traefik.
 
-> **Documentação completa em [`docs/`](docs/)** — arquitetura, runbooks, e as armadilhas já enfrentadas.
-> Para um resumo visual, abra [`docs/overview.html`](docs/overview.html) no navegador.
+Documentação em [`docs/`](docs/). Resumo visual: [`docs/overview.html`](docs/overview.html).
 
-## Visão geral
-
-- **Provisionamento** (`ansible/`): prepara qualquer VPS nova do zero — usuário não-root, Tailscale, k3s, e os componentes de plataforma (Sealed Secrets, cert-manager, ArgoCD). Roda uma vez por servidor.
-- **GitOps** (`clusters/`, `apps/`): o que o ArgoCD observa continuamente. Só workloads de projeto vivem aqui — os componentes de plataforma são geridos pelo Ansible, não pelo ArgoCD (evita ArgoCD gerenciar as próprias dependências).
-- **Plataforma** (`platform/`): manifests dos componentes de plataforma (ClusterIssuer, values do Helm), aplicados pelos roles do Ansible — não pelo ArgoCD.
-
-```
-ansible/         provisionamento (rode 1x por VPS nova)
-clusters/
-  production/
-    root-app.yaml    Application raiz (App of Apps) -> aponta pra apps/
-    apps/             uma Application por projeto
-platform/
-  cert-manager/       ClusterIssuer (aplicado via Ansible)
-  sealed-secrets/     notas de backup da master key
-  argocd/             values do Helm
-apps/
-  <projeto>/          manifests do projeto (deployment/service/ingress/kustomization)
-tools/
-  hinfra/             CLI + TUI + MCP local (não roda no cluster)
-```
-
-## Preparar sua máquina local
+## Quick start
 
 ```bash
-./scripts/setup-local-tools.sh   # instala ansible, gh, tailscale, kubeseal
-gh auth login
-sudo tailscale up
+# CLI (release v1.0.0)
+curl -fsSL https://raw.githubusercontent.com/gabehamasaki/hinfra/v1.0.0/scripts/install-hinfra.sh | bash
+
+git clone https://github.com/gabehamasaki/hinfra.git
+cd hinfra
+cp ansible/inventory/hosts.ini.example ansible/inventory/hosts.ini
+cp ansible/group_vars/all/local.yml.example ansible/group_vars/all/local.yml
+cp ansible/group_vars/all/vault.yml.example ansible/group_vars/all/vault.yml
+# preencha vault.yml e: ansible-vault encrypt ansible/group_vars/all/vault.yml
+
+hinfra init --machine   # aponta hinfa + opcional hinfra-workloads privado
+./scripts/setup-local-tools.sh
 ```
 
-## Acesso
+**Produção:** mantenha apps e data-services reais num repositório **privado** [`hinfra-workloads`](https://github.com/gabehamasaki/hinfra-workloads) (modelo). Este repo público traz só `apps/example/` e `data-services/example/`.
 
-- SSH: `ssh vps` (usuário `deploy`, root desabilitado). Ver `ansible/bootstrap.yml`.
-- kubectl: sua máquina precisa estar na tailnet (`tailscale up`). Kubeconfig local separado, `server:` apontando pro IP tailscale do node `k3s_server`.
-- ArgoCD: só acessível via Tailscale, em `https://argocd.hamasakis.cloud` (sem exposição pública).
+## Estrutura
 
-### DNS do ArgoCD (passo manual, por cluster)
-Depois que o node `k3s_server` tiver um IP Tailscale, crie um registro `A` público em `argocd.<infra_domain>` apontando pra esse IP (ex: `100.86.241.1`), **não proxiado**. Parece contraditório ("público" apontando pra algo privado), mas funciona: o IP do Tailscale (faixa `100.64.0.0/10`) só é roteável por quem está na tailnet — fora dela a conexão simplesmente não chega, e o middleware do Traefik (`platform/argocd/tailnet-only-middleware.yaml.j2`) bloqueia mesmo assim. Isso evita precisar editar `/etc/hosts` em cada dispositivo. Sem esse registro, o cert-manager consegue emitir o certificado normalmente (o desafio é DNS-01, não depende de reachability), mas ninguém consegue resolver o nome.
+| Caminho | Conteúdo |
+| --- | --- |
+| `ansible/` | Provisionamento (1× por VPS) |
+| `platform/` | cert-manager, ArgoCD values (via Ansible) |
+| `clusters/production/` | `root-app` com Applications de **exemplo** |
+| `apps/example/` | App de referência |
+| `data-services/example/` | Postgres CNPG de referência |
+| `tools/hinfra/` | CLI, TUI, MCP |
 
-## Provisionar uma VPS nova (worker ou cluster novo)
-
-```bash
-# 1. Uma vez, autenticado como root (cria o usuário `deploy` e fecha SSH root)
-ansible-playbook -i ansible/inventory/hosts.ini ansible/bootstrap.yml --limit <host> -u root -k
-
-# 2. Provisiona Tailscale + k3s (agent se o host estiver em [k3s_agents], server se em [k3s_server])
-ansible-playbook -i ansible/inventory/hosts.ini ansible/site.yml --limit <host>
-```
-
-Pra adicionar um worker: acrescente o host em `ansible/inventory/hosts.ini` sob `[k3s_agents]` e rode os dois comandos acima com `--limit` nesse host.
-
-## `hinfra` (CLI, TUI e MCP)
-
-Ferramenta local: TUI para visão do cluster, CLI para scripts, MCP para coding agents. **Não é camada da infra.** Detalhes em [`docs/12-mcp.md`](docs/12-mcp.md).
+## hinfra CLI
 
 ```bash
-hinfra init --machine          # setup ~/.config/hinfra
-make -C tools/hinfra install
+make -C tools/hinfra install   # desenvolvimento
 hinfra doctor
-hinfra mcp install             # Cursor, Claude, Codex, OpenCode
-hinfra                         # abre TUI
+hinfra mcp install
+hinfra version
 ```
 
-No repo de um projeto: `hinfra init` ou MCP tools (`deploy_status`, `app_health`, etc.). `hinfra.yml` na raiz para binding explícito.
-
-## Registrar um projeto novo
-
-Prefira `hinfra init` no repo do projeto (single ou monorepo api+web). Com MCP: `scaffold_app --monorepo`, `scaffold_workflow`, `argocd refresh --root` (ver [`docs/12-mcp.md`](docs/12-mcp.md)). Manualmente:
-
-1. Criar `apps/<projeto>/` com `deployment.yaml`, `service.yaml`, `ingress.yaml`, `kustomization.yaml` (copiar de `apps/my-portfolio/` como referência).
-2. Criar `clusters/production/apps/<projeto>-app.yaml` (Application do ArgoCD apontando pra `apps/<projeto>`).
-3. No repo do projeto:
-   - **Single image:** copiar `docs/deploy-workflow-template.yml` para `.github/workflows/deploy.yml`, ajustando `IMAGE_NAME`/`APP_PATH`.
-   - **Monorepo (api + web):** `hinfra init` ou `buildContexts` + `images` no `hinfra.yml`; manifestos via `scaffold app --monorepo` (referência [`apps/schedule-visits/`](apps/schedule-visits/)).
-4. Configurar no repo do projeto o secret `INFRA_REPO_TOKEN` (PAT fine-grained, restrito a este repo `infra`, permissão Contents: Read/Write).
-5. Se o pacote do GHCR for privado, criar um `imagePullSecret` no namespace do projeto (documentar no `deployment.yaml`).
-6. Deploy por **tag Git** (`v*` na `main` para produção) — ver [`docs/09-cicd.md`](docs/09-cicd.md). O ArgoCD sincroniza o bump no repo infra por polling (~3min).
-7. `hinfra tui` (scene apps) mostra a **versão** em produção de cada projeto (`newTag` no kustomization).
+Ver [`docs/12-mcp.md`](docs/12-mcp.md).
 
 ## Segredos
 
-- Segredos de cluster (tokens de API, etc): **Sealed Secrets** — `kubeseal` local, nunca comitar segredo em texto puro.
-- Segredos de provisionamento (Tailscale authkey, token do Cloudflare, PAT do repo infra): **ansible-vault** — ver `ansible/group_vars/all/vault.yml.example`. A senha do vault fica em `~/.infra-vault-pass` (fora do git) — guarde uma cópia num gerenciador de senhas, sem ela o `vault.yml` commitado não decifra em outra máquina.
-- **Backup da master key do Sealed Secrets é obrigatório** logo após a instalação — sem ela, um cluster novo/recriado não decifra os SealedSecrets existentes. Ver `platform/sealed-secrets/README.md`.
+- `vault.yml` — **não** vai para o Git; só local (`vault.yml.example` como modelo).
+- `hosts.ini`, `local.yml` — cópias locais a partir dos `.example`.
+- Sealed Secrets de **projetos** — no repo privado workloads.
+
+[`docs/05-segredos.md`](docs/05-segredos.md)
+
+## CI dos projetos
+
+Workflows em [`docs/deploy-workflow-template.yml`](docs/deploy-workflow-template.yml) fazem push de tags no repo **`gabehamasaki/hinfra-workloads`** com secret `HINFRA_WORKLOADS_TOKEN`.

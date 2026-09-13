@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/git"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/scaffold"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/git"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/scaffold"
 )
 
 type ScaffoldAppInput struct {
@@ -79,7 +79,7 @@ func ScaffoldApp(env *Env, in ScaffoldAppInput) (ScaffoldAppResult, error) {
 		}
 		scaffold.AppendEnvironmentOverlayFiles(files, in.Name, imageRefs, in.Environments)
 	}
-	msg, err := scaffold.WriteFiles(env.Runtime.InfraRepo, files, in.Write)
+	msg, err := scaffold.WriteFiles(env.Runtime.AppsRepo(), files, in.Write)
 	checklist := scaffoldAppChecklist(in.Monorepo, in.Write)
 	if err != nil && in.Write {
 		return ScaffoldAppResult{Content: msg, Checklist: checklist}, err
@@ -219,10 +219,10 @@ func buildChecklist(app *appctx.AppContext) []string {
 		items = append(items, "kustomization.yaml presente no repo infra")
 	}
 	if hasSecret(app) {
-		items = append(items, "INFRA_REPO_TOKEN configurado")
+		items = append(items, "HINFRA_WORKLOADS_TOKEN configurado")
 	} else {
 		owner, repo, _ := git.ParseOriginURL(mustOrigin(app.ProjectRepo))
-		items = append(items, fmt.Sprintf("INFRA_REPO_TOKEN ausente — rode: gh secret set INFRA_REPO_TOKEN --repo %s/%s --body \"<PAT>\"", owner, repo))
+		items = append(items, fmt.Sprintf("HINFRA_WORKLOADS_TOKEN ausente — rode: gh secret set HINFRA_WORKLOADS_TOKEN --repo %s/%s --body \"<PAT>\"", owner, repo))
 	}
 	items = append(items, "Pacotes GHCR: tornar públicos (Package settings) ou configurar imagePullSecret no namespace")
 	items = append(items, "Após gravar Application no infra: hinfra argocd refresh --root")
@@ -240,7 +240,7 @@ func hasSecret(app *appctx.AppContext) bool {
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(out), "INFRA_REPO_TOKEN")
+	return strings.Contains(string(out), "HINFRA_WORKLOADS_TOKEN")
 }
 
 func workflowHinfraConfig(app *appctx.AppContext) *appctx.HinfraConfig {

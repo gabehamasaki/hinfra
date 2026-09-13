@@ -3,8 +3,8 @@ package actions
 import (
 	"context"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/argocd"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/k8s"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/argocd"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/k8s"
 )
 
 type ArgoCDRefreshResult struct {

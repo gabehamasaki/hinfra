@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/components"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/components"
 )
 
 // panelStack empilha painéis e acompanha quanto da tela já foi consumido. O

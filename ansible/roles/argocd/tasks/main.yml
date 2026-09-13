@@ -66,30 +66,46 @@
       kubectl -n {{ argocd_namespace }} delete secret argocd-initial-admin-secret
   when: argocd_admin_secret.resources | length > 0
 
-- name: Credencial do ArgoCD pro repo infra (privado - precisa de PAT pra clonar)
+- name: Credencial do ArgoCD pro repo hinfra-workloads (privado)
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: v1
       kind: Secret
       metadata:
-        name: infra-repo-creds
+        name: workloads-repo-creds
         namespace: "{{ argocd_namespace }}"
         labels:
           argocd.argoproj.io/secret-type: repository
       stringData:
         type: git
-        url: "https://github.com/gabehamasaki/infra.git"
-        username: gabehamasaki
-        password: "{{ vault_infra_repo_token }}"
+        url: "{{ hinfra_workloads_repo_url }}"
+        username: "{{ hinfra_workloads_repo_username | default('git') }}"
+        password: "{{ vault_workloads_repo_token }}"
+  when: hinfra_deploy_workloads_root | bool
 
-- name: Copiar a Application raiz (App of Apps) pro servidor
+- name: Copiar a Application raiz pública (exemplos para adotantes)
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../clusters/production/root-app.yaml"
     dest: /tmp/root-app.yaml
     mode: "0600"
+  when: hinfra_deploy_public_gitops_examples | bool
 
-- name: Aplicar a Application raiz (App of Apps)
+- name: Aplicar a Application raiz pública (App of Apps)
   kubernetes.core.k8s:
     state: present
     src: /tmp/root-app.yaml
+  when: hinfra_deploy_public_gitops_examples | bool
+
+- name: Copiar workloads-root (repo privado)
+  ansible.builtin.copy:
+    src: root-workloads.yaml
+    dest: /tmp/root-workloads.yaml
+    mode: "0600"
+  when: hinfra_deploy_workloads_root | bool
+
+- name: Aplicar workloads-root
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/root-workloads.yaml
+  when: hinfra_deploy_workloads_root | bool

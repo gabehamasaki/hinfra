@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: schedule-visits
+  name: example
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/gabehamasaki/infra.git
+    repoURL: https://github.com/gabehamasaki/hinfra.git
     targetRevision: main
-    path: apps/schedule-visits
+    path: apps/example
   destination:
     server: https://kubernetes.default.svc
-    namespace: schedule-visits
+    namespace: example
   syncPolicy:
     automated:
       prune: true

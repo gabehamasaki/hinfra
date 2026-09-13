@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
 )
 
 const (

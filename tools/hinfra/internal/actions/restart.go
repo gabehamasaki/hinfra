@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/k8s"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/k8s"
 )
 
 type AppRestartResult struct {

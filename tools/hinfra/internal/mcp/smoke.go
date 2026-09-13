@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
 )
 
 func RunSmoke(ctx context.Context, env *Env) error {

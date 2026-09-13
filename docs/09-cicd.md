@@ -67,7 +67,7 @@ git push origin v1.0.0
 Detalhes:
 
 - **`GITHUB_TOKEN`** para o GHCR é nativo do Actions — permissão `packages: write` no job.
-- **`INFRA_REPO_TOKEN`** — PAT fine-grained no repo `infra`, `Contents: Read and write`.
+- **`HINFRA_WORKLOADS_TOKEN`** — PAT fine-grained no repo `hinfra-workloads`, `Contents: Read and write`.
 - **`git diff --cached --quiet && exit 0`** evita commit vazio quando a versão não mudou.
 - A imagem recebe **uma tag** por deploy (a versão semver), não `:latest` no manifesto.
 
@@ -118,7 +118,7 @@ Ordem que evita sync preso e probes falhando antes da migration:
 
 1. Manifestos + Application no repo infra; **`hinfra argocd refresh --root`**.
 2. `hinfra seal secret` + role/DB no Postgres — [08 - data services](08-data-services.md).
-3. `gh secret set INFRA_REPO_TOKEN`; pacotes GHCR públicos ou `imagePullSecret`.
+3. `gh secret set HINFRA_WORKLOADS_TOKEN`; pacotes GHCR públicos ou `imagePullSecret`.
 4. Tag `v*` na `main` do projeto → CI bumpa versão no `kustomization.yaml` do infra.
 5. Aguardar sync do Argo.
 6. Job de migration (`PreSync`) → Deployments api/web → Ingress no **web**.

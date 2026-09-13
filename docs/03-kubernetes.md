@@ -25,10 +25,10 @@ O datastore SQLite é a escolha padrão para servidor único e não impede worke
 curl -sfL https://get.k3s.io | \
   INSTALL_K3S_CHANNEL=stable \
   sh -s - server \
-  --node-ip 100.86.241.1 \
-  --advertise-address 100.86.241.1 \
+  --node-ip <TAILNET_IP> \
+  --advertise-address <TAILNET_IP> \
   --flannel-iface tailscale0 \
-  --tls-san 100.86.241.1 \
+  --tls-san <TAILNET_IP> \
   --write-kubeconfig-mode 644
 ```
 

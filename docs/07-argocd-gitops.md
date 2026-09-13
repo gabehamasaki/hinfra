@@ -6,7 +6,7 @@
 | Namespace | `argocd` |
 | Console | `https://argocd.hamasakis.cloud` — só tailnet |
 | Usuário | `admin` (senha em `.secrets/argocd-admin-password.txt`) |
-| Repositório observado | `github.com/gabehamasaki/infra` (privado) |
+| Repositório observado | `github.com/gabehamasaki/hinfra` (privado) |
 | Sincronização | Polling, ~3 min |
 
 ## O que o ArgoCD gerencia — e o que não
@@ -29,7 +29,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/gabehamasaki/infra.git
+    repoURL: https://github.com/gabehamasaki/hinfra.git
     targetRevision: main
     path: clusters/production/apps
     directory:
@@ -62,7 +62,7 @@ Applications atuais:
 
 ```yaml
 source:
-  repoURL: https://github.com/gabehamasaki/infra.git
+  repoURL: https://github.com/gabehamasaki/hinfra.git
   targetRevision: main
   path: data-services/postgres
 ```
@@ -100,9 +100,9 @@ metadata:
     argocd.argoproj.io/secret-type: repository
 stringData:
   type: git
-  url: "https://github.com/gabehamasaki/infra.git"
+  url: "https://github.com/gabehamasaki/hinfra.git"
   username: gabehamasaki
-  password: "{{ vault_infra_repo_token }}"
+  password: "{{ vault_workloads_repo_token }}"
 ```
 
 O token é um PAT fine-grained restrito ao repositório `infra`, com permissão `Contents: Read and write` — o mesmo usado pelo CI para fazer o bump de imagem.

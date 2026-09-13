@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
 )
 
 func TestSeriesRespeitaCapacidade(t *testing.T) {

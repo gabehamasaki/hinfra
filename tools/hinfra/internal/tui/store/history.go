@@ -3,7 +3,7 @@ package store
 import (
 	"time"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
 )
 
 // historyCapacity limita a memória do processo e cobre a largura de qualquer

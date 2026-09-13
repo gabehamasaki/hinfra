@@ -71,8 +71,8 @@ Com `Cluster`, o kube-proxy aplica SNAT e o Traefik vê um IP da rede de pods �
 Teste os dois caminhos, porque a diferença entre eles é diagnóstica:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" --resolve <host>:443:100.86.241.1 https://<host>/    # espera 200
-curl -s -o /dev/null -w "%{http_code}\n" -k --resolve <host>:443:187.127.62.20 https://<host>/ # espera 403
+curl -s -o /dev/null -w "%{http_code}\n" --resolve <host>:443:<TAILNET_IP> https://<host>/    # espera 200
+curl -s -o /dev/null -w "%{http_code}\n" -k --resolve <host>:443:<VPS_PUBLIC_IP> https://<host>/ # espera 403
 ```
 
 ### Certificado não emite
@@ -91,7 +91,7 @@ kubectl get order,challenge -A
 Validar o token (endpoint de **conta**, não `/user/tokens/verify`, que recusa tokens `cfat_` válidos):
 
 ```bash
-curl -s "https://api.cloudflare.com/client/v4/accounts/347d85d3ee7db762e6af1cdfb874f8e8/tokens/verify" \
+curl -s "https://api.cloudflare.com/client/v4/accounts/<CF_ACCOUNT_ID>/tokens/verify" \
   -H "Authorization: Bearer <token>"
 ```
 

@@ -3,7 +3,7 @@ package mcp
 import (
 	"context"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

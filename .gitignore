@@ -2,6 +2,11 @@
 *.retry
 ansible/group_vars/all/vault.yml
 !ansible/group_vars/all/vault.yml.example
+ansible/group_vars/all/local.yml
+!ansible/group_vars/all/local.yml.example
+ansible/inventory/hosts.ini
+!ansible/inventory/hosts.ini.example
+.local-hinfra-workloads/
 ansible/.secrets/          # chaves SSH privadas geradas pelo bootstrap.yml - NUNCA commitar
 .secrets/
 

@@ -3,7 +3,7 @@ package actions
 import (
 	"fmt"
 
-	docstore "github.com/gabehamasaki/infra/tools/hinfra/internal/docs"
+	docstore "github.com/gabehamasaki/hinfra/tools/hinfra/internal/docs"
 )
 
 type InfraDocsResult struct {

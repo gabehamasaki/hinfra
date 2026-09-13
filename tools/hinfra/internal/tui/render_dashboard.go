@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/components"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/store"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/styles"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/components"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/store"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/styles"
 )
 
 const (

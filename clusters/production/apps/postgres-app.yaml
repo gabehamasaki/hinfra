@@ -1,3 +1,4 @@
+# Reference Application for adopters using the public hinfra kit.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -6,9 +7,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/gabehamasaki/infra.git
+    repoURL: https://github.com/gabehamasaki/hinfra.git
     targetRevision: main
-    path: data-services/postgres
+    path: data-services/example/postgres
   destination:
     server: https://kubernetes.default.svc
     namespace: postgres

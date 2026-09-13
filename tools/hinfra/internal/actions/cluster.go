@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/argocd"
-	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/k8s"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/argocd"
+	appctx "github.com/gabehamasaki/hinfra/tools/hinfra/internal/context"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/k8s"
 )
 
 func ListApplications(ctx context.Context, env *Env) ([]argocd.ApplicationRow, error) {
@@ -26,7 +26,7 @@ func ListApplications(ctx context.Context, env *Env) ([]argocd.ApplicationRow, e
 		if rows[i].Layer != argocd.LayerProjects {
 			continue
 		}
-		tag, err := appctx.ProductionImageTag(env.Runtime.InfraRepo, rows[i].Name)
+		tag, err := appctx.ProductionImageTag(env.Runtime.AppsRepo(), rows[i].Name)
 		if err == nil {
 			rows[i].Version = tag
 		}

@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/argocd"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/config"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/store"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/argocd"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/config"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/store"
 )
 
 // nodeFixture reproduz a VPS real: 2 vCPU, 8 GiB, disco de 96 GiB.

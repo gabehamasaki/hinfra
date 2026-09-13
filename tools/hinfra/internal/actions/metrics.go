@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/k8s"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/k8s"
 )
 
 // NodeStat junta as três fontes de verdade sobre um node: capacity da API core,

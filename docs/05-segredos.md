@@ -4,7 +4,7 @@ Três mecanismos, cada um com um papel distinto. A regra que vale para todos: **
 
 | Mecanismo | Para quê | Onde vive |
 | --- | --- | --- |
-| **ansible-vault** | Segredos de provisionamento — o Ansible precisa deles antes do cluster existir | `ansible/group_vars/all/vault.yml`, criptografado, commitado |
+| **ansible-vault** | Segredos de provisionamento — o Ansible precisa deles antes do cluster existir | `ansible/group_vars/all/vault.yml`, **somente local** (não commitado) |
 | **Secrets criados pelo Ansible** | Credenciais que só o cluster consome | Direto no cluster, nunca passam pelo Git |
 | **Sealed Secrets** | Segredos de projeto que precisam viver no Git, para o ArgoCD aplicar | Criptografados no repositório |
 
@@ -15,7 +15,7 @@ Contém tudo que o Ansible precisa antes de haver cluster:
 ```yaml
 vault_cloudflare_api_token          # cert-manager, DNS-01
 vault_tailscale_authkey             # join na tailnet
-vault_infra_repo_token              # ArgoCD clonar o repo privado
+vault_workloads_repo_token          # ArgoCD clonar o repo privado hinfra-workloads
 vault_postgres_superuser_password
 vault_valkey_password
 vault_rustfs_access_key
@@ -24,16 +24,16 @@ vault_r2_access_key_id              # backup offsite no R2
 vault_r2_secret_access_key
 ```
 
-O arquivo criptografado **é commitado** — esse é o objetivo do ansible-vault. Um clone novo do repositório já vem com todos os segredos, e só precisa da senha para abrir.
+O `vault.yml` **não** entra no Git (repositório público). Copie de `vault.yml.example`, preencha e criptografe na sua máquina:
+
+```bash
+cp ansible/group_vars/all/vault.yml.example ansible/group_vars/all/vault.yml
+ansible-vault encrypt ansible/group_vars/all/vault.yml
+```
 
 ```bash
 ansible-vault edit ansible/group_vars/all/vault.yml       # editar
-ansible-vault decrypt ansible/group_vars/all/vault.yml    # abrir temporariamente
-ansible-vault encrypt ansible/group_vars/all/vault.yml    # fechar de novo
-git add -f ansible/group_vars/all/vault.yml               # o .gitignore cobre a versão em texto puro
 ```
-
-O `git add -f` é necessário porque o `.gitignore` bloqueia `vault.yml` justamente para impedir commit acidental da versão descriptografada. Depois de criptografar, o `-f` força o add consciente.
 
 ### A senha do vault
 
@@ -147,7 +147,7 @@ Além disso, a senha do vault na VPS expande o raio de alcance de um comprometim
 
 - Privado não é criptografado — é texto puro com controle de acesso. Um PAT vazado com escopo `repo`, um clique errado em visibilidade ou a conta comprometida expõem tudo diretamente.
 - Histórico do Git é permanente: commitou e removeu depois, continua recuperável. Rotacionar não apaga o valor antigo.
-- Dentro do próprio `vault.yml` mora o `vault_infra_repo_token`, um PAT do GitHub. Guardar a senha que abre esse vault no GitHub faz uma única conta comprometida cascatear para tudo. Com o 1Password, são dois comprometimentos independentes.
+- Dentro do próprio `vault.yml` mora o `vault_workloads_repo_token`, um PAT do GitHub. Guardar a senha que abre esse vault no GitHub faz uma única conta comprometida cascatear para tudo. Com o 1Password, são dois comprometimentos independentes.
 
 ### Duas classes de coisa, dois destinos
 

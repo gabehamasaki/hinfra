@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/tui/components"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/components"
 	"github.com/spf13/cobra"
 )
 

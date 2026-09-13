@@ -1,22 +1,15 @@
 ---
-# Copie este arquivo para `vault.yml` (mesmo diretório), preencha os valores reais,
-# depois criptografe com:
-#   ansible-vault encrypt ansible/group_vars/all/vault.yml
-#
-# `vault.yml` (não criptografado) está no .gitignore — só a versão criptografada
-# deve ser commitada. Depois de criptografado, force o add: `git add -f ansible/group_vars/all/vault.yml`
+# Copie para vault.yml, preencha, depois: ansible-vault encrypt ansible/group_vars/all/vault.yml
+# vault.yml NÃO é commitado (repo público). Mantenha só na sua máquina.
 
-vault_tailscale_authkey: "tskey-auth-xxxxxxxxxxxx"   # gerado em https://login.tailscale.com/admin/settings/keys (reutilizável, sem expiração, com a tag k8s)
-vault_cloudflare_api_token: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Zone:DNS:Edit, escopo nas zonas hamasakis.cloud e hamasakis.dev
-vault_infra_repo_token: "github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # fine-grained, restrito ao repo infra, Contents: Read and write
+vault_tailscale_authkey: "tskey-auth-xxxxxxxxxxxx"
+vault_cloudflare_api_token: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# ArgoCD clone do repo privado hinfra-workloads (read). CI dos projetos usa outro PAT (write).
+vault_workloads_repo_token: "github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-# Backup offsite no Cloudflare R2 (opcional - sem isso o backup fica só local).
-# Criar em: Cloudflare Dashboard -> R2 -> API -> Manage API Tokens -> Create,
-# permissão "Object Read & Write" no bucket infra-backups.
 vault_r2_access_key_id: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 vault_r2_secret_access_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-# Serviços de dados compartilhados (data-services/) - gerar com `openssl rand ...`
 vault_postgres_superuser_password: "xxxxxxxxxxxxxxxxxxxxxxxx"
 vault_valkey_password: "xxxxxxxxxxxxxxxxxxxxxxxxxx"
 vault_rustfs_access_key: "xxxxxxxxxxxxxxxxxxxx"

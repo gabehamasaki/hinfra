@@ -1,4 +1,4 @@
-module github.com/gabehamasaki/infra/tools/hinfra
+module github.com/gabehamasaki/hinfra/tools/hinfra
 
 go 1.26.5
 

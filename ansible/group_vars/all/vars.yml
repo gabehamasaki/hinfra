@@ -5,7 +5,13 @@ deploy_user: deploy
 
 infra_domain: hamasakis.cloud     # domínio dos serviços de plataforma (argocd, etc)
 apps_domain: hamasakis.dev        # domínio dos projetos
-acme_email: gabriel@hamasakis.dev   # recebe avisos de expiração/problemas do Let's Encrypt
+# acme_email e r2_account_id ficam em local.yml (não versionado) — ver local.yml.example
+
+hinfra_repo_url: "https://github.com/gabehamasaki/hinfra.git"
+hinfra_workloads_repo_url: "https://github.com/gabehamasaki/hinfra-workloads.git"
+# Adotantes: true + false. Sua VPS: false + true (só workloads privados).
+hinfra_deploy_public_gitops_examples: false
+hinfra_deploy_workloads_root: true
 
 k3s_channel: stable
 
@@ -28,7 +34,6 @@ k3s_backup_retention_days: 7
 # Backup offsite no Cloudflare R2. Ativa sozinho quando as credenciais existem
 # no vault - sem elas o backup continua funcionando, só local. Isso mantém o
 # repositório utilizável em uma VPS nova antes de haver credencial.
-r2_account_id: 347d85d3ee7db762e6af1cdfb874f8e8
 r2_backup_bucket: infra-backups
 k3s_backup_remote_name: r2
 k3s_backup_remote_retention_days: 30

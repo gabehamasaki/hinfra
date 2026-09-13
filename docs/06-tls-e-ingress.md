@@ -60,18 +60,18 @@ Quem usa hoje:
 
 ### Duas camadas, não uma
 
-O middleware não é a única proteção. Os hosts tailnet-only resolvem para `100.86.241.1`, um IP CGNAT que não é roteável pela internet — quem está fora da tailnet nem chega a fazer a requisição. O middleware é a segunda camada, para o caso de alguém alcançar o Traefik pelo IP público forçando o header `Host`.
+O middleware não é a única proteção. Os hosts tailnet-only resolvem para `<TAILNET_IP>`, um IP CGNAT que não é roteável pela internet — quem está fora da tailnet nem chega a fazer a requisição. O middleware é a segunda camada, para o caso de alguém alcançar o Traefik pelo IP público forçando o header `Host`.
 
 Verificação:
 
 ```bash
 # de dentro da tailnet — espera 200
 curl -s -o /dev/null -w "%{http_code}\n" \
-  --resolve argocd.hamasakis.cloud:443:100.86.241.1 https://argocd.hamasakis.cloud/
+  --resolve argocd.hamasakis.cloud:443:<TAILNET_IP> https://argocd.hamasakis.cloud/
 
 # forçando pelo IP público — espera 403
 curl -s -o /dev/null -w "%{http_code}\n" -k \
-  --resolve argocd.hamasakis.cloud:443:187.127.62.20 https://argocd.hamasakis.cloud/
+  --resolve argocd.hamasakis.cloud:443:<VPS_PUBLIC_IP> https://argocd.hamasakis.cloud/
 ```
 
 ## cert-manager

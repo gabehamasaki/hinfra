@@ -169,7 +169,7 @@ rm ~/.local/bin/infra-mcp                 # binário antigo
 
 ## Segurança
 
-O kubeconfig em `.secrets/` é cluster-admin. O MCP **não manipula segredos** — para `INFRA_REPO_TOKEN`, imprime `gh secret set`.
+O kubeconfig em `.secrets/` é cluster-admin. O MCP **não manipula segredos** — para `HINFRA_WORKLOADS_TOKEN`, imprime `gh secret set`.
 
 ## O que não faz
 

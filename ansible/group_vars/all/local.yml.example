@@ -1,0 +1,4 @@
+---
+# Copie para local.yml (mesmo diretório). Não versionado — valores da sua instância.
+acme_email: you@example.com
+r2_account_id: "<CF_ACCOUNT_ID>"

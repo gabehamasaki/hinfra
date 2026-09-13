@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/git"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/git"
 )
 
 func TestParseOriginURL(t *testing.T) {
@@ -30,7 +30,7 @@ func TestParseOriginURL(t *testing.T) {
 
 func TestResolveHTTPSWithoutHinfra(t *testing.T) {
 	env := setupFixture(t, "https://github.com/gabehamasaki/my-portfolio.git", "")
-	resolver := NewResolver(env.infra, env.kubeconfig)
+	resolver := NewResolver(env.infra, "", env.kubeconfig)
 	app, err := resolver.Resolve(env.project, "")
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +42,7 @@ func TestResolveHTTPSWithoutHinfra(t *testing.T) {
 
 func TestResolveSSHWithGitSuffix(t *testing.T) {
 	env := setupFixture(t, "git@github.com:gabehamasaki/my-portfolio.git", "")
-	resolver := NewResolver(env.infra, env.kubeconfig)
+	resolver := NewResolver(env.infra, "", env.kubeconfig)
 	app, err := resolver.Resolve(env.project, "")
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +55,7 @@ func TestResolveSSHWithGitSuffix(t *testing.T) {
 func TestResolveHinfraOverridesFork(t *testing.T) {
 	hinfra := "app: my-portfolio\nimage: gabehamasaki/my-portfolio\nappPath: apps/my-portfolio\n"
 	env := setupFixture(t, "git@github.com:other/my-fork.git", hinfra)
-	resolver := NewResolver(env.infra, env.kubeconfig)
+	resolver := NewResolver(env.infra, "", env.kubeconfig)
 	app, err := resolver.Resolve(env.project, "")
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ func TestResolveHinfraOverridesFork(t *testing.T) {
 
 func TestResolveForkWithoutHinfraFails(t *testing.T) {
 	env := setupFixture(t, "git@github.com:other/my-fork.git", "")
-	resolver := NewResolver(env.infra, env.kubeconfig)
+	resolver := NewResolver(env.infra, "", env.kubeconfig)
 	_, err := resolver.Resolve(env.project, "")
 	if err == nil {
 		t.Fatal("expected error for fork without hinfra")
@@ -77,7 +77,7 @@ func TestResolveForkWithoutHinfraFails(t *testing.T) {
 func TestResolveHinfraConflictsWithKustomization(t *testing.T) {
 	hinfra := "app: wrong-app\nimage: gabehamasaki/wrong-app\nappPath: apps/my-portfolio\n"
 	env := setupFixture(t, "https://github.com/gabehamasaki/my-portfolio.git", hinfra)
-	resolver := NewResolver(env.infra, env.kubeconfig)
+	resolver := NewResolver(env.infra, "", env.kubeconfig)
 	_, err := resolver.Resolve(env.project, "")
 	if err == nil {
 		t.Fatal("expected conflict error")
@@ -86,7 +86,7 @@ func TestResolveHinfraConflictsWithKustomization(t *testing.T) {
 
 func TestResolveMalformedHinfra(t *testing.T) {
 	env := setupFixture(t, "https://github.com/gabehamasaki/my-portfolio.git", "app: [broken\n")
-	resolver := NewResolver(env.infra, env.kubeconfig)
+	resolver := NewResolver(env.infra, "", env.kubeconfig)
 	_, err := resolver.Resolve(env.project, "")
 	if err == nil {
 		t.Fatal("expected hinfra parse error")
@@ -107,7 +107,7 @@ routing:
   webPath: /
 `
 	env := setupMonorepoFixture(t, "https://github.com/gabehamasaki/my-app.git", hinfra)
-	resolver := NewResolver(env.infra, env.kubeconfig)
+	resolver := NewResolver(env.infra, "", env.kubeconfig)
 	app, err := resolver.Resolve(env.project, "")
 	if err != nil {
 		t.Fatal(err)
@@ -132,7 +132,7 @@ routing:
 func TestResolveLegacyImageStillWorks(t *testing.T) {
 	hinfra := "app: my-portfolio\nimage: gabehamasaki/my-portfolio\nappPath: apps/my-portfolio\n"
 	env := setupFixture(t, "git@github.com:other/my-fork.git", hinfra)
-	resolver := NewResolver(env.infra, env.kubeconfig)
+	resolver := NewResolver(env.infra, "", env.kubeconfig)
 	app, err := resolver.Resolve(env.project, "")
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +187,7 @@ images:
 
 func TestResolveMissingKustomization(t *testing.T) {
 	env := setupFixture(t, "https://github.com/gabehamasaki/missing-app.git", "")
-	resolver := NewResolver(env.infra, env.kubeconfig)
+	resolver := NewResolver(env.infra, "", env.kubeconfig)
 	_, err := resolver.Resolve(env.project, "")
 	if err == nil {
 		t.Fatal("expected missing kustomization error")

@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/cli"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/cli"
 )
 
 func main() {

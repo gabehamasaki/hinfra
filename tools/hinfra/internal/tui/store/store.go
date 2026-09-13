@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/actions"
-	"github.com/gabehamasaki/infra/tools/hinfra/internal/argocd"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/actions"
+	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/argocd"
 )
 
 type ClusterSnapshot struct {

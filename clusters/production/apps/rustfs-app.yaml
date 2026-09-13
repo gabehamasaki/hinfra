@@ -1,6 +1,3 @@
-# RustFS compartilhado (armazenamento S3-compatível). Standalone (1 pod) por
-# enquanto - modo "distributed" (erasure coding entre pods) só faz sentido com
-# >=2 nodes de verdade, então isso fica pra quando houver workers.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -31,12 +28,6 @@ spec:
             memory: 128Mi
           limits:
             memory: 256Mi
-        # Console só via Tailscale (mesmo padrão do ArgoCD) - middleware reaproveitado.
-        # tls.certManager.enabled=true é obrigatório: sem ele o chart cria seu
-        # próprio Secret com conteúdo inválido e briga com o cert-manager (foi
-        # isso que bateu no rate limit do Let's Encrypt antes). Rate-limited
-        # até ~2026-09-06 16:12 UTC - o cert-manager vai ficar tentando sozinho
-        # em background e emitir assim que liberar.
         ingress:
           enabled: true
           className: traefik
@@ -44,7 +35,7 @@ spec:
             cert-manager.io/cluster-issuer: letsencrypt-cloudflare
             traefik.ingress.kubernetes.io/router.middlewares: "argocd-argocd-tailnet-only@kubernetescrd"
           hosts:
-            - host: s3.hamasakis.cloud
+            - host: s3.CHANGE-ME.infra.domain
               paths:
                 - path: /
                   pathType: Prefix
