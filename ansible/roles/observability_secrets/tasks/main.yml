@@ -1,0 +1,66 @@
+---
+# Secrets do monitoring (Grafana + Discord). GitOps via ArgoCD gerencia o resto.
+# Alternativa: commitar SealedSecrets em platform/observability/manifests/sealed/.
+- name: Exigir credenciais de monitoring no vault
+  ansible.builtin.assert:
+    that:
+      - vault_alertmanager_discord_webhook_url is defined
+      - vault_alertmanager_discord_webhook_url | length > 0
+      - vault_grafana_admin_password is defined
+      - vault_grafana_admin_password | length > 0
+    fail_msg: >
+      Defina vault_alertmanager_discord_webhook_url e vault_grafana_admin_password
+      em vault.yml (ver vault.yml.example).
+
+- name: Namespace monitoring (para secrets antes do primeiro sync do ArgoCD)
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ monitoring_namespace }}"
+
+- name: Secret admin do Grafana
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: grafana-admin
+        namespace: "{{ monitoring_namespace }}"
+      type: Opaque
+      stringData:
+        admin-user: admin
+        admin-password: "{{ vault_grafana_admin_password }}"
+  no_log: true
+
+- name: Secret webhook Discord (alertmanager-discord)
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: alertmanager-discord
+        namespace: "{{ monitoring_namespace }}"
+      type: Opaque
+      stringData:
+        webhook-url: "{{ vault_alertmanager_discord_webhook_url }}"
+  no_log: true
+
+- name: Secret webhook Discord crítico (opcional)
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: alertmanager-discord-critical
+        namespace: "{{ monitoring_namespace }}"
+      type: Opaque
+      stringData:
+        webhook-url: "{{ vault_alertmanager_critical_webhook_url }}"
+  when: vault_alertmanager_critical_webhook_url is defined and (vault_alertmanager_critical_webhook_url | length) > 0
+  no_log: true

@@ -5,7 +5,74 @@ dex:
   enabled: false
 
 notifications:
-  enabled: false
+  enabled: true
+  argocdUrl: "https://argocd.{{ infra_domain }}"
+  secret:
+    create: true
+    items:
+      discord-webhook-url: "{{ vault_alertmanager_discord_webhook_url }}"
+  notifiers:
+    service.webhook.discord: |
+      url: $discord-webhook-url
+      headers:
+        - name: Content-Type
+          value: application/json
+  cm:
+    create: true
+    subscriptions:
+      - recipients:
+          - discord
+        triggers:
+          - on-health-degraded
+          - on-sync-failed
+          - on-sync-status-unknown
+    templates:
+      template.discord-health-degraded: |
+        webhook:
+          discord:
+            method: POST
+            body: |
+{% raw %}
+              {"content": "[ArgoCD] Application **{{.app.metadata.name}}** health: {{.app.status.health.status}} — {{.context.argocdUrl}}/applications/{{.app.metadata.name}}"}
+{% endraw %}
+      template.discord-sync-failed: |
+        webhook:
+          discord:
+            method: POST
+            body: |
+{% raw %}
+              {"content": "[ArgoCD] Sync failed for **{{.app.metadata.name}}**: {{.app.status.operationState.message}}"}
+{% endraw %}
+      template.discord-sync-unknown: |
+        webhook:
+          discord:
+            method: POST
+            body: |
+{% raw %}
+              {"content": "[ArgoCD] Application **{{.app.metadata.name}}** sync status Unknown — check repo-server logs."}
+{% endraw %}
+    triggers:
+      trigger.on-health-degraded: |
+{% raw %}
+        - when: app.status.health.status == 'Degraded' || app.status.health.status == 'Missing'
+          send: [discord-health-degraded]
+{% endraw %}
+      trigger.on-sync-failed: |
+{% raw %}
+        - when: app.status.operationState.phase in ['Error', 'Failed']
+          send: [discord-sync-failed]
+{% endraw %}
+      trigger.on-sync-status-unknown: |
+{% raw %}
+        - when: app.status.sync.status == 'Unknown'
+          send: [discord-sync-unknown]
+{% endraw %}
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
 
 applicationSet:
   # Este chart não tem mais toggle "enabled" - só dá pra zerar via replicas.

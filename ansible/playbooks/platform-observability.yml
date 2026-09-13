@@ -1,0 +1,93 @@
+---
+# Aplica secrets de monitoring, platform-root e Applications de plataforma.
+# Uso (webhook fora do Git):
+#   DISCORD=$(cat ../.secrets/discord-webhook.url)
+#   GRAFANA=$(cat ../.secrets/grafana-admin-password.txt)
+#   ansible-playbook -i inventory/hosts.ini playbooks/platform-observability.yml \
+#     --private-key ../.secrets/vps-1_deploy_ed25519 \
+#     -e vault_alertmanager_discord_webhook_url="$DISCORD" \
+#     -e vault_grafana_admin_password="$GRAFANA"
+
+- name: Observabilidade de plataforma (secrets + ArgoCD Applications)
+  hosts: k3s_server
+  become: true
+  vars_files:
+    - ../group_vars/all/vars.yml
+    - ../group_vars/all/local.yml
+  environment:
+    KUBECONFIG: "{{ k3s_kubeconfig }}"
+  roles:
+    - observability_secrets
+
+  tasks:
+    - name: Adicionar repo Helm prometheus-community
+      kubernetes.core.helm_repository:
+        name: prometheus-community
+        repo_url: https://prometheus-community.github.io/helm-charts
+
+    - name: Copiar values do kube-prometheus-stack para a VPS
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../platform/observability/values.yaml"
+        dest: /tmp/kube-prometheus-values.yaml
+        mode: "0600"
+
+    - name: Instalar kube-prometheus-stack (até o Git remoto ter platform/observability)
+      kubernetes.core.helm:
+        name: kube-prometheus-stack
+        chart_ref: prometheus-community/kube-prometheus-stack
+        chart_version: "{{ kube_prometheus_stack_chart_version }}"
+        release_namespace: "{{ monitoring_namespace }}"
+        create_namespace: true
+        values_files:
+          - /tmp/kube-prometheus-values.yaml
+        wait: true
+        wait_timeout: 10m0s
+
+    - name: Copiar manifestos extras de monitoring
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../platform/observability/manifests/"
+        dest: /tmp/monitoring-manifests/
+        mode: "0600"
+
+    - name: Aplicar extras de monitoring (Kustomize)
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -k
+          - /tmp/monitoring-manifests
+      environment:
+        KUBECONFIG: "{{ k3s_kubeconfig }}"
+      changed_when: true
+
+- name: Registrar platform-root e Applications no ArgoCD (kubeconfig local)
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars_files:
+    - ../group_vars/all/vars.yml
+    - ../group_vars/all/local.yml
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python | default(lookup('env', 'HOME') + '/.local/bin/python3') }}"
+  environment:
+    KUBECONFIG: "{{ playbook_dir }}/../../.secrets/vps-1.kubeconfig"
+  tasks:
+    - name: Renderizar platform-root
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/argocd/templates/platform-root.yaml.j2"
+        dest: /tmp/platform-root.yaml
+        mode: "0600"
+
+    - name: Aplicar platform-root
+      kubernetes.core.k8s:
+        state: present
+        src: /tmp/platform-root.yaml
+
+    - name: Aplicar manifestos em clusters/production/platform-apps
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../clusters/production/platform-apps/{{ item }}"
+      loop:
+        - 00-platform-project.yaml
+        - monitoring-app.yaml

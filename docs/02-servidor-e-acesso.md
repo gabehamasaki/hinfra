@@ -211,4 +211,4 @@ Verificar se o Windows alcança a API antes de abrir o Lens:
 
 `401` é a resposta certa — significa que a API respondeu e só faltou credencial. Timeout significa que o Tailscale do Windows está desconectado.
 
-> **Métricas.** Os gráficos de CPU e memória do Lens dependem de **Prometheus** no cluster, que não está instalado. Sem ele, tudo o mais funciona (navegar recursos, logs, shell em pods, editar YAML) e só os gráficos ficam vazios. O Lens oferece instalar o Prometheus com um clique — numa máquina de 2 vCPU isso custa algumas centenas de MB de RAM, então é uma decisão deliberada, não um clique distraído. Para números pontuais, `kubectl top` já funciona via metrics-server.
+> **Métricas.** O cluster tem **Prometheus + Grafana** na camada de plataforma (`monitoring`), acessível na tailnet em `https://grafana.hamasakis.cloud` — ver [13 - Observabilidade](13-observabilidade.md). O Lens pode usar o mesmo Prometheus para gráficos; **não** instale outro stack pelo botão do Lens. Para números pontuais sem abrir o Grafana, `kubectl top` e `hinfra metrics` usam o metrics-server.

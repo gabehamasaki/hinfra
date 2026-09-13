@@ -1,0 +1,9 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: grafana-tailnet-only
+  namespace: monitoring
+spec:
+  ipAllowList:
+    sourceRange:
+      - 100.64.0.0/10

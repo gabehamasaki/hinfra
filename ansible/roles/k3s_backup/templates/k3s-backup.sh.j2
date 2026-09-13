@@ -13,6 +13,29 @@
 {% endif %}
 set -euo pipefail
 
+if [[ -f /etc/k3s-backup/env ]]; then
+  # shellcheck disable=SC1091
+  set -a
+  source /etc/k3s-backup/env
+  set +a
+fi
+
+notify_discord() {
+  local message="$1"
+  if [[ -z "${DISCORD_WEBHOOK_URL:-}" ]]; then
+    return 0
+  fi
+  local payload
+  payload=$(printf '%s' "$message" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+  curl -sfS -m 15 -X POST -H 'Content-Type: application/json' \
+    -d "$payload" "$DISCORD_WEBHOOK_URL" >/dev/null || true
+}
+
+on_failure() {
+  notify_discord "k3s backup FAILED on $(hostname) at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+trap on_failure ERR
+
 BACKUP_DIR="{{ k3s_backup_dir }}"
 DB="/var/lib/rancher/k3s/server/db/state.db"
 STAMP=$(date +%Y%m%d-%H%M%S)
@@ -38,3 +61,9 @@ rclone --config "$RCLONE_CONF" lsf "$REMOTE/$(basename "$ARCHIVE")" > /dev/null
 rclone --config "$RCLONE_CONF" delete "$REMOTE/" \
   --min-age {{ k3s_backup_remote_retention_days }}d
 {% endif %}
+
+if [[ -n "${HEALTHCHECK_URL:-}" ]]; then
+  curl -sfS -m 30 -o /dev/null "$HEALTHCHECK_URL"
+fi
+
+trap - ERR

@@ -31,6 +31,14 @@
     dest: /usr/local/bin/k3s-backup.sh
     mode: "0755"
 
+- name: Variáveis de notificação do backup (Discord / healthcheck)
+  ansible.builtin.template:
+    src: k3s-backup.env.j2
+    dest: /etc/k3s-backup/env
+    mode: "0600"
+  when: k3s_backup_discord_webhook_enabled | bool or k3s_backup_healthcheck_enabled | bool
+  no_log: true
+
 - name: systemd service + timer
   ansible.builtin.template:
     src: "{{ item }}.j2"

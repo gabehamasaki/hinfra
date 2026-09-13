@@ -42,6 +42,7 @@
   roles:
     - sealed_secrets
     - cert_manager
+    - observability_secrets
     - argocd
     - keda
     - cnpg_operator

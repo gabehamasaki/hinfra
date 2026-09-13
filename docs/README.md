@@ -20,6 +20,7 @@ Para um resumo visual de tudo, abra [`overview.html`](overview.html) no navegado
 | [10 - Runbooks](10-runbooks.md) | Operações do dia a dia, passo a passo |
 | [11 - Armadilhas](11-armadilhas.md) | Problemas reais já enfrentados e como foram resolvidos |
 | [12 - MCP](12-mcp.md) | Servidor MCP local para deploy, diagnóstico e scaffold a partir de qualquer repo de projeto |
+| [13 - Observabilidade](13-observabilidade.md) | Prometheus, Grafana (tailnet), Alertmanager → Discord, notificações ArgoCD |
 
 ## Referência rápida
 
@@ -33,6 +34,7 @@ kubectl get applications -n argocd                 # estado do GitOps
 | --- | --- | --- |
 | `https://hamasakis.dev` | Público | Portfólio |
 | `https://argocd.hamasakis.cloud` | Só tailnet | Console do ArgoCD |
+| `https://grafana.hamasakis.cloud` | Só tailnet | Grafana (métricas e alertas) |
 | `https://s3.hamasakis.cloud` | Só tailnet | Console do RustFS |
 | `postgres-rw.postgres.svc.cluster.local:5432` | Só cluster | Postgres (escrita) |
 | `valkey.valkey.svc.cluster.local:6379` | Só cluster | Valkey |

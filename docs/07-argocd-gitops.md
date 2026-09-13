@@ -11,9 +11,16 @@
 
 ## O que o ArgoCD gerencia — e o que não
 
-Ele gerencia **apenas** o conteúdo de `clusters/production/apps/`: os projetos e as instâncias dos serviços de dados.
+Dois App of Apps costumam coexistir na VPS de produção:
 
-Ele **não** gerencia cert-manager, Sealed Secrets, KEDA, o operador do CloudNativePG, nem ele mesmo. Esses são instalados pelo Ansible. O motivo é dependência circular — o ArgoCD precisa do cert-manager para o próprio certificado e do repositório Git para existir. Um componente que o ArgoCD precisa para funcionar não pode depender do ArgoCD para ser instalado. O raciocínio completo está em [01 - Arquitetura](01-arquitetura.md).
+| Raiz | Repositório | Conteúdo |
+| --- | --- | --- |
+| `workloads-root` | `hinfra-workloads` | Projetos e serviços de dados |
+| `platform-root` | `hinfra` (este repo) | Plataforma visível no GitOps — hoje **observabilidade** (`monitoring`, `monitoring-extras`) |
+
+Applications de plataforma usam o AppProject **`platform`** e o label `hinfra.layer=platform`.
+
+Ele **não** gerencia cert-manager, Sealed Secrets, KEDA, o operador do CloudNativePG, nem ele mesmo. Esses são instalados pelo Ansible. O motivo é dependência circular — o ArgoCD precisa do cert-manager para o próprio certificado e do repositório Git para existir. Observabilidade **pode** ser GitOps porque o ArgoCD não depende dela para subir. O raciocínio completo está em [01 - Arquitetura](01-arquitetura.md).
 
 ## App of Apps
 
@@ -132,7 +139,7 @@ Numa máquina de 2 vCPU, componentes não usados foram desligados:
 dex:
   enabled: false            # SSO externo — não usado
 notifications:
-  enabled: false            # notificações — não usado
+  enabled: true             # Degraded / sync failed → Discord (vault_alertmanager_discord_webhook_url)
 applicationSet:
   replicas: 0               # ApplicationSet — não usado
 ```

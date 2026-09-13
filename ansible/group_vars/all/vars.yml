@@ -12,6 +12,8 @@ hinfra_workloads_repo_url: "https://github.com/gabehamasaki/hinfra-workloads.git
 # Adotantes: true + false. Sua VPS: false + true (só workloads privados).
 hinfra_deploy_public_gitops_examples: false
 hinfra_deploy_workloads_root: true
+# Applications de plataforma (observabilidade, etc.) no repo hinfra — visíveis no ArgoCD.
+hinfra_deploy_platform_root: true
 
 k3s_channel: stable
 
@@ -26,6 +28,10 @@ k3s_flannel_mtu: 1280
 argocd_namespace: argocd
 cert_manager_namespace: cert-manager
 sealed_secrets_namespace: kube-system
+monitoring_namespace: monitoring
+
+# kube-prometheus-stack (prometheus-community). Versão pinada — não usar "*".
+kube_prometheus_stack_chart_version: "70.2.1"
 
 k3s_kubeconfig: /etc/rancher/k3s/k3s.yaml
 k3s_backup_dir: /var/backups/k3s
@@ -38,3 +44,7 @@ r2_backup_bucket: infra-backups
 k3s_backup_remote_name: r2
 k3s_backup_remote_retention_days: 30
 k3s_backup_remote_enabled: "{{ vault_r2_access_key_id is defined and (vault_r2_access_key_id | length) > 0 }}"
+
+# Notificações de backup (opcional). Usa o mesmo webhook do Discord por padrão.
+k3s_backup_discord_webhook_enabled: "{{ vault_alertmanager_discord_webhook_url is defined and (vault_alertmanager_discord_webhook_url | length) > 0 }}"
+k3s_backup_healthcheck_enabled: "{{ vault_k3s_backup_healthcheck_url is defined and (vault_k3s_backup_healthcheck_url | length) > 0 }}"

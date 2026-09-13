@@ -13,6 +13,14 @@
     - { src: tailnet-only-middleware.yaml.j2, dest: argocd-middleware.yaml }
     - { src: values.yaml.j2, dest: argocd-values.yaml }
 
+- name: Exigir webhook Discord no vault (notificações ArgoCD)
+  ansible.builtin.assert:
+    that:
+      - vault_alertmanager_discord_webhook_url is defined
+      - vault_alertmanager_discord_webhook_url | length > 0
+    fail_msg: >
+      Defina vault_alertmanager_discord_webhook_url em vault.yml (compartilhado com Alertmanager).
+
 - name: Instalar/atualizar ArgoCD
   kubernetes.core.helm:
     name: argocd
@@ -66,6 +74,38 @@
       kubectl -n {{ argocd_namespace }} delete secret argocd-initial-admin-secret
   when: argocd_admin_secret.resources | length > 0
 
+- name: Renderizar Secret do repo Helm prometheus-community
+  ansible.builtin.template:
+    src: argocd-repo-prometheus-helm.yaml.j2
+    dest: /tmp/argocd-repo-prometheus-helm.yaml
+    mode: "0600"
+  when: hinfra_deploy_platform_root | bool
+
+- name: Registrar repo Helm prometheus-community no ArgoCD
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/argocd-repo-prometheus-helm.yaml
+  when: hinfra_deploy_platform_root | bool
+
+- name: Credencial do ArgoCD pro repo hinfra (plataforma / platform-root)
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: hinfra-repo-creds
+        namespace: "{{ argocd_namespace }}"
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      stringData:
+        type: git
+        url: "{{ hinfra_repo_url }}"
+        username: "{{ hinfra_repo_username | default('git') }}"
+        password: "{{ vault_hinfra_repo_token | default(vault_workloads_repo_token, true) }}"
+  when: hinfra_deploy_platform_root | bool
+  no_log: true
+
 - name: Credencial do ArgoCD pro repo hinfra-workloads (privado)
   kubernetes.core.k8s:
     state: present
@@ -109,6 +149,19 @@
     state: present
     src: /tmp/root-workloads.yaml
   when: hinfra_deploy_workloads_root | bool
+
+- name: Renderizar platform-root (App of Apps — camada plataforma no repo hinfra)
+  ansible.builtin.template:
+    src: platform-root.yaml.j2
+    dest: /tmp/platform-root.yaml
+    mode: "0600"
+  when: hinfra_deploy_platform_root | bool
+
+- name: Aplicar platform-root
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/platform-root.yaml
+  when: hinfra_deploy_platform_root | bool
 
 - name: Remover root-app público (evita sincronizar só apps/example do hinfa)
   kubernetes.core.k8s:

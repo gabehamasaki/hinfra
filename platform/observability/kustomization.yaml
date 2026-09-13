@@ -1,0 +1,18 @@
+# Um único path Git para o ArgoCD (evita multi-source Helm + $values no repo remoto).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+
+helmCharts:
+  - name: kube-prometheus-stack
+    repo: https://prometheus-community.github.io/helm-charts
+    version: 70.2.1
+    releaseName: kube-prometheus-stack
+    namespace: monitoring
+    valuesFile: values.yaml
+    includeCRDs: true
+
+resources:
+  - manifests/tailnet-only-middleware.yaml
+  - manifests/alertmanager-discord.yaml
+  - manifests/cert-manager-podmonitor.yaml

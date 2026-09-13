@@ -3,4 +3,5 @@ Description=Backup do datastore SQLite do k3s
 
 [Service]
 Type=oneshot
+EnvironmentFile=-/etc/k3s-backup/env
 ExecStart=/usr/local/bin/k3s-backup.sh

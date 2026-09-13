@@ -14,3 +14,12 @@ vault_postgres_superuser_password: "xxxxxxxxxxxxxxxxxxxxxxxx"
 vault_valkey_password: "xxxxxxxxxxxxxxxxxxxxxxxxxx"
 vault_rustfs_access_key: "xxxxxxxxxxxxxxxxxxxx"
 vault_rustfs_secret_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# Observabilidade (Alertmanager, ArgoCD notifications, falha de backup k3s)
+vault_alertmanager_discord_webhook_url: "https://discord.com/api/webhooks/000000000000000000/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# Opcional: canal ou ntfy/Pushover só para severity=critical no Prometheus
+# vault_alertmanager_critical_webhook_url: "https://discord.com/api/webhooks/..."
+vault_grafana_admin_password: "xxxxxxxxxxxxxxxxxxxxxxxx"
+
+# Opcional: ping após backup k3s bem-sucedido (ex. URL do healthchecks.io)
+# vault_k3s_backup_healthcheck_url: "https://hc-ping.com/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

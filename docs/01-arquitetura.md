@@ -17,7 +17,7 @@ A infra é dividida em quatro camadas, e a linha que as separa é **com que freq
 │  hardening · usuário deploy · Tailscale · k3s · backup            │
 └───────────────────────────────────────────────────────────────────┘
 ┌─ 2. Plataforma (Ansible + Helm) ────── muda raramente ────────────┐
-│  Sealed Secrets · cert-manager · ArgoCD · KEDA · operador do PG   │
+│  Sealed Secrets · cert-manager · ArgoCD · KEDA · operador do PG (+ observabilidade via ArgoCD)   │
 └───────────────────────────────────────────────────────────────────┘
 ┌─ 3. Serviços de dados (ArgoCD) ─────── muda de vez em quando ─────┐
 │  Postgres · Valkey · RustFS                                       │

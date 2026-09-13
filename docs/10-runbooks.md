@@ -15,10 +15,13 @@ kubectl get applications -n argocd
 kubectl get pods -A | grep -v Running | grep -v Completed
 kubectl top nodes
 kubectl get certificate -A
+kubectl get pods -n monitoring
 ssh vps 'sudo ufw status verbose && tailscale status'
 ```
 
 Referência do estado saudável: ~9% de CPU, ~2,9 GB de RAM, todos os Applications `Synced`/`Healthy`.
+
+Detalhes de alertas e Grafana: [13 - Observabilidade](13-observabilidade.md).
 
 ---
 

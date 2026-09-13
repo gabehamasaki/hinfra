@@ -26,6 +26,7 @@ ansible/
     cert_manager            cert-manager + ClusterIssuer
     argocd                  ArgoCD, middleware, credencial de repo, root-app
     keda                    KEDA (autoscaling)
+    observability_secrets   Secrets do monitoring (Grafana/Discord); stack via ArgoCD
     cnpg_operator           operador do CloudNativePG
     data_services_secrets   credenciais de Postgres/Valkey/RustFS
 ```
@@ -77,7 +78,7 @@ Quatro plays, por grupo:
 1. `k3s_cluster` → `common`, `tailscale`
 2. `k3s_server` → `k3s_server`, `k3s_backup`
 3. `k3s_agents` → `k3s_agent`
-4. `k3s_server` → Helm (pre-task) → `sealed_secrets`, `cert_manager`, `argocd`, `keda`, `cnpg_operator`, `data_services_secrets`
+4. `k3s_server` → Helm (pre-task) → `sealed_secrets`, `cert_manager`, `argocd`, `keda`, `observability_secrets`, `cnpg_operator`, `data_services_secrets`
 
 O play 4 roda com `KUBECONFIG=/etc/rancher/k3s/k3s.yaml` no environment, para que os módulos `kubernetes.core.*` encontrem o cluster.
 

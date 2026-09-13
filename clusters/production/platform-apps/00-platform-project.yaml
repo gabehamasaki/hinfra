@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  labels:
+    hinfra.layer: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: Serviços de plataforma geridos pelo repo hinfra (ex. observabilidade)
+  sourceRepos:
+    - https://github.com/gabehamasaki/hinfra.git
+    - https://prometheus-community.github.io/helm-charts
+  destinations:
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
