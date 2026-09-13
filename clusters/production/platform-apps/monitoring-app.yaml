@@ -20,8 +20,10 @@ spec:
     server: https://kubernetes.default.svc
     namespace: monitoring
   syncPolicy:
+    # prune desligado: os recursos do release Helm ainda carregam o tracking-id
+    # deste Application, então prune apagaria o kube-prometheus-stack inteiro.
     automated:
-      prune: true
+      prune: false
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
