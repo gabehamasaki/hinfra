@@ -109,3 +109,25 @@
     state: present
     src: /tmp/root-workloads.yaml
   when: hinfra_deploy_workloads_root | bool
+
+- name: Remover root-app público (evita sincronizar só apps/example do hinfa)
+  kubernetes.core.k8s:
+    state: absent
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    name: root-app
+    namespace: "{{ argocd_namespace }}"
+  when:
+    - hinfra_deploy_workloads_root | bool
+    - not (hinfra_deploy_public_gitops_examples | bool)
+
+- name: Remover Application example (template do repo público)
+  kubernetes.core.k8s:
+    state: absent
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    name: example
+    namespace: "{{ argocd_namespace }}"
+  when:
+    - hinfra_deploy_workloads_root | bool
+    - not (hinfra_deploy_public_gitops_examples | bool)
