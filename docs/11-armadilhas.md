@@ -397,6 +397,28 @@ Problemas recorrentes ao subir projetos api+web — detalhes e ordem de deploy e
 
 ---
 
+## Prune apagou um release que o ArgoCD não instalou
+
+**Sintoma.** O Application `monitoring` ficou `Synced`/`Healthy` — e o `kube-prometheus-stack` sumiu do cluster: Grafana, operator, kube-state-metrics, node-exporter e Alertmanager deletados. Restaram só o Prometheus e os manifests do próprio Application.
+
+**Causa.** O Application chegou a ter o chart como source. Nesse período o ArgoCD carimbou `argocd.argoproj.io/tracking-id` nos recursos — inclusive nos que o **Helm** tinha criado. Ao reduzir o desired state para só os manifests extras, esses recursos viraram "tracked mas ausentes do Git", e `syncPolicy.automated.prune: true` fez exatamente o que promete.
+
+**Correção.** `prune: false` no Application antes de encolher o desired state. Depois `helm upgrade --install` recria tudo; o release e os Secrets sobrevivem porque não são tocados pelo prune. Recursos recriados pelo Helm nascem sem o `tracking-id`, o que encerra o risco.
+
+**Detalhe que atrasa a correção.** O `platform-root` desfaz qualquer `kubectl patch` no Application em ~3 min pelo `selfHeal` — a correção precisa ir para o Git. E o repo-server pode continuar resolvendo `main` para um commit antigo mesmo com refresh `hard`: é cache de refs no Redis. `kubectl rollout restart deployment argocd-redis -n argocd` resolve.
+
+---
+
+## Chart Helm grande não renderiza no repo-server
+
+**Sintoma.** Application em `Unknown` com `failed to generate manifest ... context deadline exceeded` ou `not a valid chart repository or cannot be reached`.
+
+**Causa.** O `helm pull` baixa o `index.yaml` inteiro do repositório antes do chart. O do `prometheus-community` tem 6,3 MB e esta VPS recebe do GitHub Pages a ~126 KB/s — só o índice leva ~50 s, e o helm embutido no repo-server desiste em 120 s. Não é DNS, não é IPv6 (o pod só tem `::1`) e não é CPU: o mesmo `helm pull` contra `ghcr.io` leva 3 s.
+
+**Correção.** Usar origem que dispense o `index.yaml` — chart espelhado como OCI, ou versionado no próprio repo. Aumentar `ARGOCD_EXEC_TIMEOUT` não resolve: o timeout de 120 s é do cliente HTTP dentro do helm.
+
+---
+
 ## Padrões que se repetem
 
 Olhando o conjunto, quatro categorias explicam quase tudo:
