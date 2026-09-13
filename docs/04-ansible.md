@@ -68,7 +68,7 @@ Três plays, nessa ordem: cria o `deploy` → valida login e sudo numa conexão 
 
 ```bash
 ansible-playbook -i inventory/hosts.ini site.yml \
-  --private-key /home/hamasaki/www/infra/.secrets/vps-1_deploy_ed25519
+  --private-key ~/www/hinfra/.secrets/vps-1_deploy_ed25519
 
 ansible-playbook -i inventory/hosts.ini site.yml --limit worker-1   # um host só
 ```
@@ -153,7 +153,7 @@ A lição vale para qualquer role: presença de arquivo é proxy ruim para "já 
 
 ### Nome do node ≠ nome no inventário
 
-O k3s registra o node com o **hostname real do SO** (`srv1957194`), não com o alias do inventário (`vps-1`). Tasks que consultam o node precisam de `{{ ansible_hostname }}`, não `{{ inventory_hostname }}`.
+O k3s registra o node com o **hostname real do SO** (`<node-hostname>`), não com o alias do inventário (`vps-1`). Tasks que consultam o node precisam de `{{ ansible_hostname }}`, não `{{ inventory_hostname }}`.
 
 ### Ansible e I/O não-bloqueante
 

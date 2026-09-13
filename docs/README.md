@@ -1,8 +1,8 @@
 # Documentação da infra
 
-Documentação completa do cluster que roda em `hamasakis.cloud` (plataforma) e `hamasakis.dev` (projetos).
+Documentação do kit **hinfra** — exemplos usam placeholders (`<infra_domain>`, `<apps_domain>`, `<github-org>`, `<TAILNET_IP>`, etc.). Na sua VPS, os domínios reais ficam em [`ansible/group_vars/all/vars.yml`](../ansible/group_vars/all/vars.yml) e segredos em `vault.yml` (não versionado).
 
-Para um resumo visual de tudo, abra [`overview.html`](overview.html) no navegador.
+Para um resumo visual, abra [`overview.html`](overview.html) no navegador.
 
 ## Índice
 
@@ -32,10 +32,10 @@ kubectl get applications -n argocd                 # estado do GitOps
 
 | Endereço | Alcance | O que é |
 | --- | --- | --- |
-| `https://hamasakis.dev` | Público | Portfólio |
-| `https://argocd.hamasakis.cloud` | Só tailnet | Console do ArgoCD |
-| `https://grafana.hamasakis.cloud` | Só tailnet | Grafana (métricas e alertas) |
-| `https://s3.hamasakis.cloud` | Só tailnet | Console do RustFS |
+| `https://<apps_domain>` | Público | Portfólio |
+| `https://argocd.<infra_domain>` | Só tailnet | Console do ArgoCD |
+| `https://grafana.<infra_domain>` | Só tailnet | Grafana (métricas e alertas) |
+| `https://s3.<infra_domain>` | Só tailnet | Console do RustFS |
 | `postgres-rw.postgres.svc.cluster.local:5432` | Só cluster | Postgres (escrita) |
 | `valkey.valkey.svc.cluster.local:6379` | Só cluster | Valkey |
 | `rustfs-svc.rustfs.svc.cluster.local:9000` | Só cluster | API S3 |

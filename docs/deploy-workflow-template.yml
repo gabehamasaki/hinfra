@@ -10,7 +10,7 @@ TAG_TRIGGER_YAML
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: gabehamasaki/CHANGE-ME
+  IMAGE_NAME: <github-org>/CHANGE-ME
   APP_PATH: apps/CHANGE-ME
 
 jobs:
@@ -72,7 +72,7 @@ DEPLOY_BRANCH_MAP
       - name: Checkout do repo hinfra-workloads
         uses: actions/checkout@v4
         with:
-          repository: gabehamasaki/hinfra-workloads
+          repository: <github-org>/hinfra-workloads
           token: ${{ secrets.HINFRA_WORKLOADS_TOKEN }}
           path: workloads
 

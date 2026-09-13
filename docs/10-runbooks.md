@@ -4,7 +4,7 @@ Procedimentos operacionais. Todos assumem que você está na tailnet e com o kub
 
 ```bash
 tailscale up
-export KUBECONFIG=/home/hamasaki/www/infra/.secrets/vps-1.kubeconfig
+export KUBECONFIG=~/www/hinfra/.secrets/vps-1.kubeconfig
 ```
 
 ## Checagem geral de saúde
@@ -30,7 +30,7 @@ Detalhes de alertas e Grafana: [13 - Observabilidade](13-observabilidade.md).
 ```bash
 cd ansible
 ansible-playbook -i inventory/hosts.ini site.yml \
-  --private-key /home/hamasaki/www/infra/.secrets/vps-1_deploy_ed25519
+  --private-key ~/www/hinfra/.secrets/vps-1_deploy_ed25519
 ```
 
 Idempotente — pode rodar sempre. Se der `ERROR: Ansible requires blocking IO`, envolva num pty:
@@ -110,7 +110,7 @@ AUTH default <vault_valkey_password>
 
 ## Criar um bucket no RustFS
 
-Console web em `https://s3.hamasakis.cloud` (só tailnet), ou via API S3 de dentro do cluster, com qualquer cliente compatível apontando para `rustfs-svc.rustfs.svc.cluster.local:9000` e as credenciais de `vault_rustfs_access_key` / `vault_rustfs_secret_key`.
+Console web em `https://s3.<infra_domain>` (só tailnet), ou via API S3 de dentro do cluster, com qualquer cliente compatível apontando para `rustfs-svc.rustfs.svc.cluster.local:9000` e as credenciais de `vault_rustfs_access_key` / `vault_rustfs_secret_key`.
 
 ---
 
@@ -123,14 +123,14 @@ ssh vps 'sudo systemctl list-timers k3s-backup.timer'           # agendamento
 ssh vps 'sudo systemctl status k3s-backup'                      # falhas do último run
 
 # cópia offsite no R2 (30 dias)
-ssh vps 'sudo rclone --config /etc/k3s-backup/rclone.conf ls r2:infra-backups/k3s/srv1957194/'
+ssh vps 'sudo rclone --config /etc/k3s-backup/rclone.conf ls r2:infra-backups/k3s/<node-hostname>/'
 ```
 
 Baixar um backup do R2 para a máquina local:
 
 ```bash
 ssh vps 'sudo rclone --config /etc/k3s-backup/rclone.conf copy \
-  r2:infra-backups/k3s/srv1957194/state-<timestamp>.db.gz /tmp/'
+  r2:infra-backups/k3s/<node-hostname>/state-<timestamp>.db.gz /tmp/'
 scp vps:/tmp/state-<timestamp>.db.gz .
 ```
 
@@ -206,7 +206,7 @@ curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/<CF_ACCOUNT_ID>/to
 Ordem de verificação:
 
 1. **DNS** — `nslookup <host> 1.1.1.1`. Se o `1.1.1.1` responde e sua máquina não, é cache local.
-2. **Tailnet** — hosts `*.hamasakis.cloud` exigem `tailscale status` conectado.
+2. **Tailnet** — hosts `*.<infra_domain>` exigem `tailscale status` conectado.
 3. **Certificado** — `kubectl get certificate -A`.
 4. **Ingress** — `kubectl get ingress -A`.
 5. **Pod** — `kubectl get pods -n <ns>`.

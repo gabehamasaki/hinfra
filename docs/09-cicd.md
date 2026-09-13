@@ -11,7 +11,7 @@ push de tag (v* | dev/* | hg/*)
       │
       ├─ valida commit na branch do ambiente (default main)
       ├─ 1. build da imagem Docker
-      ├─ 2. push para ghcr.io/gabehamasaki/<projeto>:<versão>
+      ├─ 2. push para ghcr.io/<github-org>/<projeto>:<versão>
       ├─ 3. checkout do repo infra (PAT)
       ├─ 4. kustomize edit set image → newTag em apps/<projeto>/…
       └─ 5. commit e push no repo infra
@@ -77,8 +77,8 @@ Detalhes:
 app: my-portfolio
 appPath: apps/my-portfolio
 namespace: my-portfolio
-host: my-portfolio.hamasakis.dev
-image: gabehamasaki/my-portfolio
+host: my-app.<apps_domain>
+image: <github-org>/my-portfolio
 
 environments:
   production:
@@ -93,13 +93,13 @@ environments:
     branch: develop
     appPath: apps/my-portfolio/overlays/dev
     namespace: my-portfolio-dev
-    host: my-portfolio.dev.hamasakis.dev
+    host: my-app.dev.<apps_domain>
   homolog:
     enabled: false
     tagPrefix: hg/
     appPath: apps/my-portfolio/overlays/homolog
     namespace: my-portfolio-hg
-    host: my-portfolio.hg.hamasakis.dev
+    host: my-app.hg.<apps_domain>
 ```
 
 Com `enabled: false` em dev/homolog, tags `dev/*` e `hg/*` falham no CI até existir overlay + Application no infra (`scaffold_app` com `environments` habilitados).
@@ -138,7 +138,7 @@ Ordem que evita sync preso e probes falhando antes da migration:
 
 ```yaml
 images:
-  - name: ghcr.io/gabehamasaki/meuprojeto
+  - name: ghcr.io/<github-org>/meuprojeto
     newTag: latest
 ```
 
@@ -161,7 +161,7 @@ Inalterado — pacote público ou `imagePullSecret` no namespace.
 ## Diagnóstico
 
 ```bash
-gh run list --repo gabehamasaki/meuprojeto --limit 5
+gh run list --repo <github-org>/meuprojeto --limit 5
 hinfra deploy status --app meuprojeto
 export KUBECONFIG=.secrets/vps-1.kubeconfig
 kubectl get application meuprojeto -n argocd

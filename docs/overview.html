@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Infra hamasakis</title>
+<title>Infra hinfra</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -174,7 +174,7 @@
 <div class="shell">
 
   <aside class="rail">
-    <div class="rail-mark">Infra<br>hamasakis<span>k3s · argocd</span></div>
+    <div class="rail-mark">Infra<br>hinfra<span>k3s · argocd</span></div>
     <nav>
       <a href="#topologia">Topologia</a>
       <a href="#camadas">Camadas</a>
@@ -195,10 +195,10 @@
         preparado para receber mais servidores sem remontar nada.
       </p>
       <div class="meta">
-        <span><b>srv1957194</b> · Hostinger KVM 2</span>
+        <span><b><node-hostname></b> · Hostinger KVM 2</span>
         <span>Ubuntu <b>24.04.4</b></span>
-        <span>público <b>187.127.62.20</b></span>
-        <span>tailnet <b>100.86.241.1</b></span>
+        <span>público <b><VPS_PUBLIC_IP></b></span>
+        <span>tailnet <b><TAILNET_IP></b></span>
       </div>
 
       <dl class="stats">
@@ -220,7 +220,7 @@
       </p>
 
       <div class="diagram">
-        <svg viewBox="0 0 860 330" role="img" aria-label="Diagrama: internet chega por 80 e 443 e alcança apenas hamasakis.dev; a tailnet alcança os consoles e a API do Kubernetes">
+        <svg viewBox="0 0 860 330" role="img" aria-label="Diagrama: internet chega por 80 e 443 e alcança apenas <apps_domain>; a tailnet alcança os consoles e a API do Kubernetes">
           <defs>
             <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"></path>
@@ -257,13 +257,13 @@
           <!-- destinos público -->
           <line x1="616" y1="66" x2="672" y2="66" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#ar)"></line>
           <rect class="dg-box" x="676" y="40" width="176" height="52" rx="6" stroke-width="1"></rect>
-          <text class="dg-t" x="692" y="62" fill="var(--public)">hamasakis.dev</text>
+          <text class="dg-t" x="692" y="62" fill="var(--public)"><apps_domain></text>
           <text class="dg-s" x="692" y="78">projetos · público</text>
 
           <!-- destino bloqueado -->
           <line x1="616" y1="128" x2="672" y2="128" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar)"></line>
           <rect class="dg-box" x="676" y="102" width="176" height="52" rx="6" stroke-width="1" stroke-dasharray="3 3"></rect>
-          <text class="dg-t" x="692" y="124">*.hamasakis.cloud</text>
+          <text class="dg-t" x="692" y="124">*.<infra_domain></text>
           <text class="dg-s" x="692" y="140" fill="var(--public)">403 se vier da internet</text>
 
           <!-- lane tailnet -->
@@ -359,17 +359,17 @@
           <thead><tr><th>Endereço</th><th>Alcance</th><th>O que é</th><th>Escala com workers</th></tr></thead>
           <tbody>
             <tr>
-              <td class="m">hamasakis.dev</td>
+              <td class="m"><apps_domain></td>
               <td><span class="chip pub">público</span></td>
               <td>Portfólio</td><td class="m">replicas</td>
             </tr>
             <tr>
-              <td class="m">argocd.hamasakis.cloud</td>
+              <td class="m">argocd.<infra_domain></td>
               <td><span class="chip priv">tailnet</span></td>
               <td>Console do ArgoCD</td><td class="m">—</td>
             </tr>
             <tr>
-              <td class="m">s3.hamasakis.cloud</td>
+              <td class="m">s3.<infra_domain></td>
               <td><span class="chip priv">tailnet</span></td>
               <td>Console do RustFS</td><td class="m">mode.distributed</td>
             </tr>
@@ -493,9 +493,9 @@ kubectl annotate application root-app -n argocd \
     </section>
 
     <footer>
-      <span>github.com/gabehamasaki/hinfra</span>
-      <span>hamasakis.cloud · plataforma</span>
-      <span>hamasakis.dev · projetos</span>
+      <span>github.com/<github-org>/hinfra</span>
+      <span>&lt;infra_domain&gt; · plataforma</span>
+      <span>&lt;apps_domain&gt; · projetos</span>
     </footer>
   </main>
 </div>

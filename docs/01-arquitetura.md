@@ -56,7 +56,7 @@ Uma consequência prática: nenhum componente é gerenciado pelas duas camadas a
 
 Duas portas de entrada, com regras completamente diferentes:
 
-**Internet pública** → `:80` / `:443` na interface pública → Traefik → apps de projeto (`*.hamasakis.dev`).
+**Internet pública** → `:80` / `:443` na interface pública → Traefik → apps de projeto (`*.<apps_domain>`).
 Serviços de plataforma nesse caminho recebem `403` do middleware do Traefik.
 
 **Tailnet** → IP `<TAILNET_IP>` → Traefik (consoles) ou direto na porta `6443` (API do Kubernetes).

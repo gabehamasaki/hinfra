@@ -4,9 +4,9 @@
 | --- | --- |
 | Versão | `v3.5.2` (chart `argo-cd-10.8.0`) |
 | Namespace | `argocd` |
-| Console | `https://argocd.hamasakis.cloud` — só tailnet |
+| Console | `https://argocd.<infra_domain>` — só tailnet |
 | Usuário | `admin` (senha em `.secrets/argocd-admin-password.txt`) |
-| Repositório observado | `github.com/gabehamasaki/hinfra` (privado) |
+| Repositório observado | `github.com/<github-org>/hinfra` (e forks de workloads, se usar) |
 | Sincronização | Polling, ~3 min |
 
 ## O que o ArgoCD gerencia — e o que não
@@ -36,7 +36,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/gabehamasaki/hinfra.git
+    repoURL: https://github.com/<github-org>/hinfra.git
     targetRevision: main
     path: clusters/production/apps
     directory:
@@ -69,7 +69,7 @@ Applications atuais:
 
 ```yaml
 source:
-  repoURL: https://github.com/gabehamasaki/hinfra.git
+  repoURL: https://github.com/<github-org>/hinfra.git
   targetRevision: main
   path: data-services/postgres
 ```
@@ -107,8 +107,8 @@ metadata:
     argocd.argoproj.io/secret-type: repository
 stringData:
   type: git
-  url: "https://github.com/gabehamasaki/hinfra.git"
-  username: gabehamasaki
+  url: "https://github.com/<github-org>/hinfra.git"
+  username: <github-org>
   password: "{{ vault_workloads_repo_token }}"
 ```
 
@@ -116,7 +116,7 @@ O token é um PAT fine-grained restrito ao repositório `infra`, com permissão 
 
 ## Sem webhook: por que o sync é por polling
 
-O caminho normal seria um webhook do GitHub apontando para `https://argocd.hamasakis.cloud/api/webhook`, dando sync quase instantâneo. Isso exigiria que o ArgoCD fosse alcançável pelo GitHub — ou seja, exposto na internet.
+O caminho normal seria um webhook do GitHub apontando para `https://argocd.<infra_domain>/api/webhook`, dando sync quase instantâneo. Isso exigiria que o ArgoCD fosse alcançável pelo GitHub — ou seja, exposto na internet.
 
 A console do ArgoCD dá acesso equivalente a execução de código arbitrário no cluster. Expô-la publicamente contradiria toda a premissa de manter a API do Kubernetes fora da internet. A escolha foi manter o ArgoCD privado e aceitar até ~3 minutos de latência no deploy.
 

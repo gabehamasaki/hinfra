@@ -10,9 +10,9 @@ Alertas 24/7 e dashboards na **camada de plataforma**, visíveis no **ArgoCD** (
 | alertmanager-discord | `monitoring` | Converte webhooks do Alertmanager para Discord |
 | Argo CD notifications | `argocd` | Degraded / sync failed / Unknown → Discord |
 
-**Grafana:** `https://grafana.hamasakis.cloud` — só tailnet (middleware Traefik, mesmo modelo do ArgoCD).
+**Grafana:** `https://grafana.<infra_domain>` — só tailnet (middleware Traefik, mesmo modelo do ArgoCD).
 
-**ArgoCD** continua em `https://argocd.hamasakis.cloud`.
+**ArgoCD** continua em `https://argocd.<infra_domain>`.
 
 ## Pré-requisitos no vault
 
@@ -23,11 +23,11 @@ Em `ansible/group_vars/all/vault.yml` (ver `vault.yml.example`):
 - `vault_alertmanager_critical_webhook_url` — opcional (rota `severity=critical` no Alertmanager)
 - `vault_k3s_backup_healthcheck_url` — opcional (ping após backup diário bem-sucedido)
 
-DNS: registro `grafana` na zona `hamasakis.cloud` apontando para o IP Tailscale do node (igual `argocd`).
+DNS: registro `grafana` na zona `<infra_domain>` apontando para o IP Tailscale do node (igual `argocd`).
 
 ## Ver no ArgoCD
 
-No console (`argocd.hamasakis.cloud`), filtre por label **`hinfra.layer=platform`** ou abra o App of Apps **`platform-root`**. Filhos típicos:
+No console (`argocd.<infra_domain>`), filtre por label **`hinfra.layer=platform`** ou abra o App of Apps **`platform-root`**. Filhos típicos:
 
 | Application | O que sincroniza |
 | --- | --- |
@@ -65,7 +65,7 @@ Depois commit + push do `platform-root` e sync. O ArgoCD recria o release com o 
 | Prometheus / Alertmanager | Node com disco cheio, pod em CrashLoop, certificado expirando |
 | Argo CD | Application Degraded, sync Failed, status Unknown |
 | Backup k3s (systemd) | Falha no script; sucesso opcional via healthchecks.io |
-| Externo (recomendado) | Uptime em URLs públicas `*.hamasakis.dev` — não substitui alertas in-cluster |
+| Externo (recomendado) | Uptime em URLs públicas `*.<apps_domain>` — não substitui alertas in-cluster |
 
 Prometheus usa scrape de **60s** e retention de **7 dias** para caber em 2 vCPU.
 
@@ -104,9 +104,9 @@ kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus-node-exporte
 kubectl get pods -n monitoring
 kubectl get prometheusrule -n monitoring
 kubectl top pods -n monitoring
-curl -sk -o /dev/null -w "%{http_code}\n" https://grafana.hamasakis.cloud  # na tailnet, 200 ou 302
+curl -sk -o /dev/null -w "%{http_code}\n" https://grafana.<infra_domain>  # na tailnet, 200 ou 302
 ```
 
 ## Plano B (CPU apertada)
 
-Se o node passar a recusar pods por requests de CPU: aumentar `scrapeInterval` / reduzir `retention` em `values.yaml.j2`, ou migrar para Grafana Alloy + Grafana Cloud (remote_write) mantendo só exporters no cluster — ver comentário no plano de arquitetura.
+Se o node passar a recusar pods por requests de CPU: aumentar `scrapeInterval` / reduzir `retention` em `platform/observability/values.yaml`, ou migrar para Grafana Alloy + Grafana Cloud (remote_write) mantendo só exporters no cluster — ver comentário no plano de arquitetura.

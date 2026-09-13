@@ -161,7 +161,7 @@ ingress:
     cert-manager.io/cluster-issuer: letsencrypt-cloudflare
     traefik.ingress.kubernetes.io/router.middlewares: "argocd-argocd-tailnet-only@kubernetescrd"
   hosts:
-    - host: s3.hamasakis.cloud
+    - host: s3.<infra_domain>
       paths: [{ path: /, pathType: Prefix }]
   tls:
     enabled: true
@@ -174,7 +174,7 @@ ingress:
 | Porta | O quê | Como acessar |
 | --- | --- | --- |
 | `9000` | API S3 | `rustfs-svc.rustfs.svc.cluster.local:9000` — de dentro do cluster |
-| `9001` | Console web | `https://s3.hamasakis.cloud` — só tailnet |
+| `9001` | Console web | `https://s3.<infra_domain>` — só tailnet |
 
 O Ingress aponta **apenas para o console** (porta 9001) — é assim que o chart o define. A API S3 não é exposta via Ingress, e não precisa: as aplicações que a consomem rodam no mesmo cluster e falam direto com o Service. Isso significa que o RustFS está plenamente funcional para os projetos mesmo que o Ingress ou o certificado estejam com problema.
 

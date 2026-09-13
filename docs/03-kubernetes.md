@@ -7,7 +7,7 @@
 | Distribuição | k3s, canal `stable` |
 | Versão atual | `v1.36.4+k3s1` |
 | Runtime | containerd 2.3.4 |
-| Node | `srv1957194` — control-plane, único |
+| Node | `<node-hostname>` — control-plane, único |
 | Datastore | SQLite embutido (padrão do k3s single-server) |
 | CNI | flannel, sobre a interface `tailscale0` |
 | Ingress | Traefik `v3.7.1` (chart `40.1.4`), embutido no k3s |

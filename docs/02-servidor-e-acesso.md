@@ -5,14 +5,14 @@
 | | |
 | --- | --- |
 | Provedor | Hostinger, plano KVM 2 |
-| ID da VM (API Hostinger) | `1957194` |
-| Hostname | `srv1957194` |
+| ID da VM (API Hostinger) | `<hostinger-vm-id>` |
+| Hostname | `<node-hostname>` |
 | IP público | `<VPS_PUBLIC_IP>` |
 | IP na tailnet | `<TAILNET_IP>` |
 | SO | Ubuntu 24.04.4 LTS (kernel 6.8.0) |
 | CPU / RAM / Disco | 2 vCPU · 8 GB · 96 GB |
 
-O hostname real (`srv1957194`) é o nome com que o node se registra no Kubernetes. O inventário do Ansible chama a mesma máquina de `vps-1` — são coisas diferentes, e confundir as duas já custou um playbook quebrado (ver [11 - Armadilhas](11-armadilhas.md)).
+O hostname real (`<node-hostname>`) é o nome com que o node se registra no Kubernetes. O inventário do Ansible chama a mesma máquina de `vps-1` — são coisas diferentes, e confundir as duas já custou um playbook quebrado (ver [11 - Armadilhas](11-armadilhas.md)).
 
 ## Usuário `deploy` — por que root saiu de cena
 
@@ -114,7 +114,7 @@ Estado atual da tailnet:
 | Node | IP | O que é |
 | --- | --- | --- |
 | `vps-1` | `<TAILNET_IP>` | A VPS |
-| `Hamasaki` | `100.88.60.121` | Máquina local de desenvolvimento |
+| `<tailscale-device>` | `<DEV_TAILNET_IP>` | Máquina local de desenvolvimento |
 
 ## DNS
 
@@ -122,18 +122,19 @@ Os dois domínios são registrados na Hostinger, mas o DNS autoritativo é o **C
 
 | Zona | Zone ID | Uso |
 | --- | --- | --- |
-| `hamasakis.cloud` | `<CF_ZONE_INFRA>` | Serviços de plataforma |
-| `hamasakis.dev` | `<CF_ZONE_APPS>` | Projetos |
+| `<infra_domain>` | `<CF_ZONE_INFRA>` | Serviços de plataforma |
+| `<apps_domain>` | `<CF_ZONE_APPS>` | Projetos |
 
 ### Registros que importam
 
 | Registro | Aponta para | Proxy | Alcance |
 | --- | --- | --- | --- |
-| `hamasakis.dev` (apex) | `<VPS_PUBLIC_IP>` (público) | Não | Internet |
-| `argocd.hamasakis.cloud` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
-| `s3.hamasakis.cloud` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
+| `<apps_domain>` (apex) | `<VPS_PUBLIC_IP>` (público) | Não | Internet |
+| `argocd.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
+| `grafana.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
+| `s3.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 
-Os registros de e-mail de `hamasakis.dev` (MX, SPF, DKIM, DMARC, apontando para o Hostinger Mail) **não foram tocados** e não devem ser.
+Os registros de e-mail de `<apps_domain>` (MX, SPF, DKIM, DMARC, apontando para o Hostinger Mail) **não foram tocados** e não devem ser.
 
 ### O padrão "registro público apontando para IP privado"
 
@@ -155,7 +156,7 @@ Ao criar um registro novo, o Cloudflare já responde na hora nos servidores auto
 Para diagnosticar:
 
 ```bash
-nslookup argocd.hamasakis.cloud 1.1.1.1     # consulta direto o resolver da Cloudflare
+nslookup argocd.<infra_domain> 1.1.1.1     # consulta direto o resolver da Cloudflare
 ```
 
 Se o `1.1.1.1` responde certo e a sua máquina não, é cache local ou do provedor. `ipconfig /flushdns` no Windows resolve o lado local; o resto é esperar. Editar o arquivo `hosts` funciona como contorno imediato, mas não deveria virar permanente.
@@ -173,7 +174,7 @@ Host vps
    HostName <VPS_PUBLIC_IP>
    User deploy
    Port 22
-   IdentityFile "/home/hamasaki/www/infra/.secrets/vps-1_deploy_ed25519"
+   IdentityFile "~/www/hinfra/.secrets/vps-1_deploy_ed25519"
 ```
 
 ### kubectl
@@ -182,7 +183,7 @@ Exige estar na tailnet — o kubeconfig aponta para o IP `<TAILNET_IP>`, não pa
 
 ```bash
 tailscale up                                                # se ainda não estiver conectado
-export KUBECONFIG=/home/hamasaki/www/infra/.secrets/vps-1.kubeconfig
+export KUBECONFIG=~/www/hinfra/.secrets/vps-1.kubeconfig
 kubectl get nodes
 ```
 
@@ -211,4 +212,4 @@ Verificar se o Windows alcança a API antes de abrir o Lens:
 
 `401` é a resposta certa — significa que a API respondeu e só faltou credencial. Timeout significa que o Tailscale do Windows está desconectado.
 
-> **Métricas.** O cluster tem **Prometheus + Grafana** na camada de plataforma (`monitoring`), acessível na tailnet em `https://grafana.hamasakis.cloud` — ver [13 - Observabilidade](13-observabilidade.md). O Lens pode usar o mesmo Prometheus para gráficos; **não** instale outro stack pelo botão do Lens. Para números pontuais sem abrir o Grafana, `kubectl top` e `hinfra metrics` usam o metrics-server.
+> **Métricas.** O cluster tem **Prometheus + Grafana** na camada de plataforma (`monitoring`), acessível na tailnet em `https://grafana.<infra_domain>` — ver [13 - Observabilidade](13-observabilidade.md). O Lens pode usar o mesmo Prometheus para gráficos; **não** instale outro stack pelo botão do Lens. Para números pontuais sem abrir o Grafana, `kubectl top` e `hinfra metrics` usam o metrics-server.

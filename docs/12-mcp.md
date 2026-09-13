@@ -13,8 +13,8 @@ hinfra init --machine
 # ou manual:
 mkdir -p ~/.config/hinfra
 cat > ~/.config/hinfra/config.yaml <<'EOF'
-infraRepo: /home/hamasaki/www/infra
-workloadsRepo: /home/hamasaki/www/infra/hinfra-workloads
+infraRepo: ~/www/hinfra
+workloadsRepo: ~/www/hinfra/hinfra-workloads
 argocdRootApp: workloads-root
 EOF
 
@@ -53,7 +53,7 @@ hinfra restart [--app]
 hinfra argocd refresh [--app] [--root]
 hinfra argocd sync [--app] [--root] [--projects] [--force] [--wait]
 hinfra seal secret -f secret.yaml [-o apps/<app>/sealed-secret.yaml] [--execute]
-hinfra scaffold app --name my-app --host my-app.hamasakis.dev [--monorepo] [--write]
+hinfra scaffold app --name my-app --host my-app.<apps_domain> [--monorepo] [--write]
 hinfra scaffold workflow [--app] [--monorepo] [--write]
 ```
 
@@ -86,10 +86,10 @@ Parâmetro MCP **`projectDir`**: caminho absoluto do repo do projeto em `deploy_
 
 ```yaml
 app: my-portfolio
-image: gabehamasaki/my-portfolio
+image: <github-org>/my-portfolio
 appPath: apps/my-portfolio
 namespace: my-portfolio
-host: hamasakis.dev
+host: <apps_domain>
 exposure: public
 ```
 

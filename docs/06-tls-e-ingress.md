@@ -54,9 +54,9 @@ Quem usa hoje:
 
 | Ingress | Host | Regra |
 | --- | --- | --- |
-| `argocd-server` | `argocd.hamasakis.cloud` | Tailnet-only |
-| `rustfs` | `s3.hamasakis.cloud` | Tailnet-only |
-| `my-portfolio` | `hamasakis.dev` | Público, sem middleware |
+| `argocd-server` | `argocd.<infra_domain>` | Tailnet-only |
+| `rustfs` | `s3.<infra_domain>` | Tailnet-only |
+| `my-portfolio` | `<apps_domain>` | Público, sem middleware |
 
 ### Duas camadas, não uma
 
@@ -67,11 +67,11 @@ Verificação:
 ```bash
 # de dentro da tailnet — espera 200
 curl -s -o /dev/null -w "%{http_code}\n" \
-  --resolve argocd.hamasakis.cloud:443:<TAILNET_IP> https://argocd.hamasakis.cloud/
+  --resolve argocd.<infra_domain>:443:<TAILNET_IP> https://argocd.<infra_domain>/
 
 # forçando pelo IP público — espera 403
 curl -s -o /dev/null -w "%{http_code}\n" -k \
-  --resolve argocd.hamasakis.cloud:443:<VPS_PUBLIC_IP> https://argocd.hamasakis.cloud/
+  --resolve argocd.<infra_domain>:443:<VPS_PUBLIC_IP> https://argocd.<infra_domain>/
 ```
 
 ## cert-manager
@@ -85,7 +85,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -k \
 
 ### Por que DNS-01 e não HTTP-01
 
-O desafio HTTP-01 exige que o Let's Encrypt alcance a porta 80 do host. Isso funcionaria para `hamasakis.dev`, mas **não** para `argocd.hamasakis.cloud` — que, por definição, não é alcançável de fora.
+O desafio HTTP-01 exige que o Let's Encrypt alcance a porta 80 do host. Isso funcionaria para `<apps_domain>`, mas **não** para `argocd.<infra_domain>` — que, por definição, não é alcançável de fora.
 
 O DNS-01 prova a posse do domínio criando um registro TXT via API do Cloudflare. Não depende de reachability nenhuma, o que permite emitir certificado Let's Encrypt válido para serviços que só existem dentro da tailnet. Como bônus, suportaria wildcard se um dia for necessário.
 
@@ -97,7 +97,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: gabriel@hamasakis.dev
+    email: you@example.com
     privateKeySecretRef:
       name: letsencrypt-cloudflare-account-key
     solvers:
@@ -108,8 +108,8 @@ spec:
               key: api-token
         selector:
           dnsZones:
-            - "hamasakis.cloud"
-            - "hamasakis.dev"
+            - "<infra_domain>"
+            - "<apps_domain>"
 ```
 
 O token do Cloudflare é um **Account API Token** (prefixo `cfat_`), com permissão `Zone:DNS:Edit` escopada nas duas zonas.
@@ -130,15 +130,15 @@ Certificados ativos:
 
 | Namespace | Certificate | Host |
 | --- | --- | --- |
-| `argocd` | `argocd-server-tls` | `argocd.hamasakis.cloud` |
-| `my-portfolio` | `my-portfolio-tls` | `hamasakis.dev` |
-| `rustfs` | `rustfs-tls` | `s3.hamasakis.cloud` |
+| `argocd` | `argocd-server-tls` | `argocd.<infra_domain>` |
+| `my-portfolio` | `my-portfolio-tls` | `<apps_domain>` |
+| `rustfs` | `rustfs-tls` | `s3.<infra_domain>` |
 
 ## Rate limits do Let's Encrypt
 
 O limite que importa aqui: **5 certificados por semana para o mesmo conjunto exato de hostnames**. Ele conta emissões bem-sucedidas, em janela móvel de 168 horas.
 
-Esse limite já foi atingido nesta infra, no host `s3.hamasakis.cloud`, por um loop de reemissão — o chart do RustFS criava um Secret TLS com conteúdo inválido, o cert-manager detectava a corrupção e reemitia, o ArgoCD sincronizava o Secret inválido de volta, e o ciclo se repetia até estourar o limite. O relato completo está em [11 - Armadilhas](11-armadilhas.md).
+Esse limite já foi atingido nesta infra, no host `s3.<infra_domain>`, por um loop de reemissão — o chart do RustFS criava um Secret TLS com conteúdo inválido, o cert-manager detectava a corrupção e reemitia, o ArgoCD sincronizava o Secret inválido de volta, e o ciclo se repetia até estourar o limite. O relato completo está em [11 - Armadilhas](11-armadilhas.md).
 
 Duas lições operacionais:
 

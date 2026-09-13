@@ -158,7 +158,7 @@ helm show values <repo>/<chart> | grep -A3 "^<chave>:"
 
 **Sintoma.** `Error from server (NotFound): nodes "vps-1" not found`, com o node perfeitamente `Ready`.
 
-**Causa.** O k3s registra o node pelo hostname do SO (`srv1957194`). O inventário do Ansible o chama de `vps-1`.
+**Causa.** O k3s registra o node pelo hostname do SO (`<node-hostname>`). O inventário do Ansible o chama de `vps-1`.
 
 **Correção.** `{{ ansible_hostname }}`, não `{{ inventory_hostname }}`.
 
