@@ -25,6 +25,37 @@ tailscale_hostname: "{{ tailscale_hostname | default(inventory_hostname) }}"
 k3s_flannel_iface: tailscale0
 k3s_flannel_mtu: 1280
 
+# Ranges da Cloudflare (https://api.cloudflare.com/client/v4/ips). Ficam aqui, e não
+# nos defaults de um role, porque dois roles em plays diferentes precisam deles:
+# `common` (UFW só aceita 80/443 vindo da Cloudflare) e `traefik` (só confia no
+# X-Forwarded-For vindo dela). O role common confere esta lista contra a API e falha
+# se divergir — uma mudança da Cloudflare tem que aparecer como erro do playbook,
+# não como site fora do ar. Atualizar é um commit deliberado aqui.
+cloudflare_ip_ranges_v4:
+  - 173.245.48.0/20
+  - 103.21.244.0/22
+  - 103.22.200.0/22
+  - 103.31.4.0/22
+  - 141.101.64.0/18
+  - 108.162.192.0/18
+  - 190.93.240.0/20
+  - 188.114.96.0/20
+  - 197.234.240.0/22
+  - 198.41.128.0/17
+  - 162.158.0.0/15
+  - 104.16.0.0/13
+  - 104.24.0.0/14
+  - 172.64.0.0/13
+  - 131.0.72.0/22
+cloudflare_ip_ranges_v6:
+  - "2400:cb00::/32"
+  - "2606:4700::/32"
+  - "2803:f800::/32"
+  - "2405:b500::/32"
+  - "2405:8100::/32"
+  - "2a06:98c0::/29"
+  - "2c0f:f248::/32"
+
 argocd_namespace: argocd
 cert_manager_namespace: cert-manager
 sealed_secrets_namespace: kube-system
