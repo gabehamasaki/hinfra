@@ -18,6 +18,7 @@ func ctx60() (context.Context, context.CancelFunc) {
 
 func newDeployCmd() *cobra.Command {
 	var app string
+	var deployEnv string
 	cmd := &cobra.Command{Use: "deploy", Short: "Comandos de deploy"}
 	status := &cobra.Command{
 		Use:   "status",
@@ -26,12 +27,12 @@ func newDeployCmd() *cobra.Command {
 			env := loadEnvValidated()
 			ctx, cancel := ctx60()
 			defer cancel()
-			out, err := actions.DeployStatus(ctx, env, app)
+			out, err := actions.DeployStatusForEnv(ctx, env, app, deployEnv)
 			if err != nil {
 				fatal(err)
 			}
 			if err := printOrJSON(out, func() {
-				fmt.Printf("step %d ok=%v sha=%s\n%s\n", out.Step, out.OK, out.SHA, out.Detail)
+				fmt.Printf("step %d ok=%v version=%s\n%s\n", out.Step, out.OK, out.Version, out.Detail)
 			}); err != nil {
 				fatal(err)
 			}
@@ -41,6 +42,7 @@ func newDeployCmd() *cobra.Command {
 		},
 	}
 	status.Flags().StringVar(&app, "app", "", "override do app")
+	status.Flags().StringVar(&deployEnv, "env", "production", "ambiente: production, dev ou homolog")
 	cmd.AddCommand(status)
 	return cmd
 }

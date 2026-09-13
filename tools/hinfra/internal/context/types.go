@@ -1,6 +1,8 @@
 package context
 
-import "strings"
+import (
+	"strings"
+)
 
 type AppContext struct {
 	Name        string
@@ -16,18 +18,147 @@ type AppContext struct {
 	Exposure    string
 	Routing       *HinfraRouting
 	BuildContexts map[string]BuildContext
+	Hinfra        *HinfraConfig
 }
 
 type HinfraConfig struct {
-	App           string                     `yaml:"app"`
-	Image         string                     `yaml:"image"`
-	Images        map[string]string          `yaml:"images"`
-	BuildContexts map[string]BuildContext    `yaml:"buildContexts"`
-	AppPath       string                     `yaml:"appPath"`
-	Namespace     string                     `yaml:"namespace"`
-	Host          string                     `yaml:"host"`
-	Exposure      string                     `yaml:"exposure"`
-	Routing       *HinfraRouting             `yaml:"routing"`
+	App           string                       `yaml:"app"`
+	Image         string                       `yaml:"image"`
+	Images        map[string]string            `yaml:"images"`
+	BuildContexts map[string]BuildContext      `yaml:"buildContexts"`
+	AppPath       string                       `yaml:"appPath"`
+	Namespace     string                       `yaml:"namespace"`
+	Host          string                       `yaml:"host"`
+	Exposure      string                       `yaml:"exposure"`
+	Routing       *HinfraRouting               `yaml:"routing"`
+	Environments  map[string]HinfraEnvironment `yaml:"environments"`
+}
+
+type HinfraEnvironment struct {
+	Enabled   bool   `yaml:"enabled"`
+	TagPrefix string `yaml:"tagPrefix"`
+	Branch    string `yaml:"branch"`
+	AppPath   string `yaml:"appPath"`
+	Namespace string `yaml:"namespace"`
+	Host      string `yaml:"host"`
+}
+
+const defaultDeployBranch = "main"
+
+// EnvironmentBranch returns the git branch used to validate tagged commits for an environment.
+func (e HinfraEnvironment) EnvironmentBranch() string {
+	if e.Branch != "" {
+		return e.Branch
+	}
+	return defaultDeployBranch
+}
+
+// DefaultEnvironments returns production + optional dev/homolog stubs for hinfrac.yml scaffolding.
+func DefaultEnvironments(appName string) map[string]HinfraEnvironment {
+	basePath := "apps/" + appName
+	return map[string]HinfraEnvironment{
+		"production": {
+			Enabled:   true,
+			TagPrefix: "v",
+			Branch:    defaultDeployBranch,
+			AppPath:   basePath,
+			Namespace: appName,
+		},
+		"dev": {
+			Enabled:   false,
+			TagPrefix: "dev/",
+			Branch:    defaultDeployBranch,
+			AppPath:   basePath + "/overlays/dev",
+			Namespace: appName + "-dev",
+			Host:      appName + ".dev.hamasakis.dev",
+		},
+		"homolog": {
+			Enabled:   false,
+			TagPrefix: "hg/",
+			Branch:    defaultDeployBranch,
+			AppPath:   basePath + "/overlays/homolog",
+			Namespace: appName + "-hg",
+			Host:      appName + ".hg.hamasakis.dev",
+		},
+	}
+}
+
+// ProductionEnvironment returns the production config, with defaults when environments is absent.
+func (c *HinfraConfig) ProductionEnvironment() HinfraEnvironment {
+	if c == nil || len(c.Environments) == 0 {
+		app := c.App
+		if app == "" {
+			app = "app"
+		}
+		path := c.AppPath
+		if path == "" {
+			path = "apps/" + app
+		}
+		ns := c.Namespace
+		if ns == "" {
+			ns = app
+		}
+		return HinfraEnvironment{
+			Enabled:   true,
+			TagPrefix: "v",
+			Branch:    defaultDeployBranch,
+			AppPath:   path,
+			Namespace: ns,
+		}
+	}
+	if prod, ok := c.Environments["production"]; ok {
+		if prod.AppPath == "" && c.AppPath != "" {
+			prod.AppPath = c.AppPath
+		}
+		if prod.Namespace == "" && c.Namespace != "" {
+			prod.Namespace = c.Namespace
+		}
+		return prod
+	}
+	return DefaultEnvironments(c.App)["production"]
+}
+
+// EnabledTagTriggers returns GitHub Actions tag glob patterns for enabled environments.
+func (c *HinfraConfig) EnabledTagTriggers() []string {
+	envs := c.EffectiveEnvironments()
+	var triggers []string
+	for _, env := range envs {
+		if !env.Enabled {
+			continue
+		}
+		triggers = append(triggers, tagPrefixToGlob(env.TagPrefix))
+	}
+	if len(triggers) == 0 {
+		return []string{"v*", "dev/**", "hg/**"}
+	}
+	return triggers
+}
+
+// EffectiveEnvironments returns configured environments or production-only defaults.
+func (c *HinfraConfig) EffectiveEnvironments() map[string]HinfraEnvironment {
+	if c == nil || len(c.Environments) == 0 {
+		if c == nil {
+			return map[string]HinfraEnvironment{}
+		}
+		return DefaultEnvironments(c.App)
+	}
+	return c.Environments
+}
+
+func tagPrefixToGlob(prefix string) string {
+	switch prefix {
+	case "v", "v*":
+		return "v*"
+	case "dev/", "dev/*":
+		return "dev/**"
+	case "hg/", "hg/*":
+		return "hg/**"
+	default:
+		if strings.HasSuffix(prefix, "/") {
+			return prefix + "**"
+		}
+		return prefix + "*"
+	}
 }
 
 type HinfraRouting struct {

@@ -481,7 +481,7 @@ func TestDeployPipelineMarcaElosAnterioresComoOk(t *testing.T) {
 	m := dashboardModel(120, 30)
 	m.scene = sceneDeploy
 	m.selected = argocd.ApplicationRow{Name: "site"}
-	m.deploy = actions.DeployStatusResult{Step: 3, OK: false, Detail: "sync=OutOfSync", SHA: "abcdef1234567890"}
+	m.deploy = actions.DeployStatusResult{Step: 3, OK: false, Detail: "sync=OutOfSync", Version: "abcdef1234567890"}
 	out := stripANSI(m.View())
 	if !strings.Contains(out, "✓ 1.") || !strings.Contains(out, "✓ 2.") {
 		t.Errorf("elos 1 e 2 deveriam estar marcados como ok\n---\n%s", out)

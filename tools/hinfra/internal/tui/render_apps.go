@@ -31,10 +31,11 @@ func (m model) renderAppList() string {
 	}
 
 	rows := []string{
-		styles.Label.Render(fmt.Sprintf("%s %s %s %s",
-			components.PadRight("APP", 26),
-			components.PadRight("SYNC", 11),
-			components.PadRight("HEALTH", 12),
+		styles.Label.Render(fmt.Sprintf("%s %s %s %s %s",
+			components.PadRight("APP", 22),
+			components.PadRight("VERSÃO", 12),
+			components.PadRight("SYNC", 10),
+			components.PadRight("HEALTH", 10),
 			"CAMADA")),
 	}
 
@@ -42,10 +43,11 @@ func (m model) renderAppList() string {
 		rows = append(rows, styles.StatusMuted.Render("nenhum Application com esse filtro"))
 	}
 	for i, app := range m.apps {
-		line := fmt.Sprintf("%s %s %s %s",
-			components.PadRight(app.Name, 26),
-			styles.SyncStyle(app.Sync).Render(components.PadRight(app.Sync, 11)),
-			styles.HealthStyle(app.Health).Render(components.PadRight(app.Health, 12)),
+		line := fmt.Sprintf("%s %s %s %s %s",
+			components.PadRight(app.Name, 22),
+			styles.StatusMuted.Render(components.PadRight(formatDeployVersion(app.Version), 12)),
+			styles.SyncStyle(app.Sync).Render(components.PadRight(app.Sync, 10)),
+			styles.HealthStyle(app.Health).Render(components.PadRight(app.Health, 10)),
 			styles.StatusMuted.Render(string(app.Layer)))
 		if i == m.cursor {
 			line = styles.Selected.Render("▸ " + line)
@@ -72,6 +74,7 @@ func (m model) renderAppDetail() string {
 		styles.Label.Render(components.PadRight("namespace", 12)) + m.selectedNamespace(),
 		styles.Label.Render(components.PadRight("sync", 12)) + styles.SyncStyle(m.selected.Sync).Render(m.selected.Sync),
 		styles.Label.Render(components.PadRight("health", 12)) + styles.HealthStyle(m.selected.Health).Render(m.selected.Health),
+		styles.Label.Render(components.PadRight("versão", 12)) + styles.StatusMuted.Render(formatDeployVersion(m.selected.Version)),
 		styles.Label.Render(components.PadRight("revision", 12)) + styles.StatusMuted.Render(shortSHA(m.selected.Revision)),
 		styles.Label.Render(components.PadRight("path", 12)) + styles.StatusMuted.Render(m.selected.SourcePath),
 	}
@@ -156,17 +159,39 @@ func (m model) renderLogs() string {
 // deploySteps descreve os quatro elos da cadeia de deploy, na ordem em que
 // actions.DeployStatus os verifica.
 var deploySteps = []string{
-	"CI construiu a imagem (SHA no registry)",
+	"versão desejada no kustomization do infra",
 	"commit de bump chegou ao repo infra",
 	"ArgoCD sincronizou o Application",
-	"pods rodam a imagem com esse SHA",
+	"pods rodam a imagem com essa versão",
+}
+
+func formatDeployVersion(version string) string {
+	if version == "" {
+		return "—"
+	}
+	if len(version) == 40 && isHex(version) {
+		return shortSHA(version)
+	}
+	if len(version) > 12 {
+		return version[:12]
+	}
+	return version
+}
+
+func isHex(s string) bool {
+	for _, c := range s {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+			return false
+		}
+	}
+	return true
 }
 
 func (m model) renderDeploy() string {
 	res := m.deploy
 	lines := []string{
 		styles.Label.Render(components.PadRight("app", 10)) + m.selected.Name,
-		styles.Label.Render(components.PadRight("sha", 10)) + styles.StatusMuted.Render(shortSHA(res.SHA)),
+		styles.Label.Render(components.PadRight("versão", 10)) + styles.StatusMuted.Render(formatDeployVersion(res.Version)),
 		"",
 	}
 	for i, description := range deploySteps {

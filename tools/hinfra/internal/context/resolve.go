@@ -106,6 +106,7 @@ func (r *Resolver) Resolve(cwd string, appOverride string) (*AppContext, error) 
 		Exposure:      exposure,
 		Routing:       routing,
 		BuildContexts: buildContexts,
+		Hinfra:        hinfra,
 	}
 	if len(images) > 0 {
 		ctx.Images = images

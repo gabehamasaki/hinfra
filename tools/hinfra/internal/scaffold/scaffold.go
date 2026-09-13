@@ -52,14 +52,14 @@ func WorkflowTemplateName(monorepo bool) string {
 	return "deploy-workflow-template.yml"
 }
 
-func RenderWorkflow(templateContent string, p WorkflowParams) string {
+func RenderWorkflow(templateContent string, p WorkflowParams, cfg *appctx.HinfraConfig) string {
 	out := templateContent
 	out = strings.ReplaceAll(out, workflowPlaceholderImage, p.ImageName)
 	out = strings.ReplaceAll(out, workflowPlaceholderAppPath, p.AppPath)
-	return out
+	return ApplyWorkflowEnvironments(out, cfg)
 }
 
-func RenderMonorepoWorkflow(templateContent string, p MonorepoWorkflowParams) string {
+func RenderMonorepoWorkflow(templateContent string, p MonorepoWorkflowParams, cfg *appctx.HinfraConfig) string {
 	out := strings.ReplaceAll(templateContent, workflowPlaceholderAppPath, p.AppPath)
 	if api, ok := p.Images["api"]; ok {
 		out = strings.ReplaceAll(out, workflowPlaceholderAPI, api)
@@ -79,7 +79,7 @@ func RenderMonorepoWorkflow(templateContent string, p MonorepoWorkflowParams) st
 		out = strings.ReplaceAll(out, workflowPlaceholderContextWeb, webBC.Context)
 		out = strings.ReplaceAll(out, workflowPlaceholderFileWeb, webBC.File)
 	}
-	return out
+	return ApplyWorkflowEnvironments(out, cfg)
 }
 
 type HinfraParams struct {
@@ -92,6 +92,7 @@ type HinfraParams struct {
 	Host          string
 	Exposure      string
 	Routing       *appctx.HinfraRouting
+	Environments  map[string]appctx.HinfraEnvironment
 }
 
 func RenderAppFiles(p AppParams) (map[string]string, error) {
@@ -154,6 +155,9 @@ func RenderHinfra(p HinfraParams) string {
 		}
 	} else if p.Image != "" {
 		fields["image"] = p.Image
+	}
+	if len(p.Environments) > 0 {
+		fields["environments"] = p.Environments
 	}
 	var buf bytes.Buffer
 	buf.WriteString("# hinfra.yml — binding explícito projeto ↔ infra\n")

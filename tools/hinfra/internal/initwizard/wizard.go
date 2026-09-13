@@ -207,5 +207,5 @@ func printChecklist(name, host, exposure string, monorepo bool) {
 		fmt.Println("[ ] DNS no Cloudflare → 100.86.241.1 (tailnet)")
 	}
 	fmt.Println("[ ] git push em ambos os repos")
-	fmt.Println("[ ] Primeiro deploy: CI bump SHA → sync Argo → migration PreSync → hinfra deploy status")
+	fmt.Println("[ ] Primeiro deploy: tag v* na main → CI bump versão no infra → sync Argo → hinfra deploy status")
 }

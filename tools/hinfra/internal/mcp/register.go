@@ -10,7 +10,7 @@ import (
 type Env = actions.Env
 
 func Register(server *mcp.Server, env *Env) {
-	mcp.AddTool(server, &mcp.Tool{Name: "deploy_status", Description: "Verifica os 4 elos do deploy: SHA em origin/main, bump no infra, Application Synced/Healthy, imagem no pod"}, deployStatusHandler(env))
+	mcp.AddTool(server, &mcp.Tool{Name: "deploy_status", Description: "Verifica os 4 elos do deploy: versão no kustomization, bump no infra, Application Synced/Healthy, imagem no pod"}, deployStatusHandler(env))
 	mcp.AddTool(server, &mcp.Tool{Name: "app_health", Description: "Pods, restarts, imagem em execução e events do namespace"}, appHealthHandler(env))
 	mcp.AddTool(server, &mcp.Tool{Name: "app_logs", Description: "Logs de pod com suporte a previous=true para CrashLoopBackOff"}, appLogsHandler(env))
 	mcp.AddTool(server, &mcp.Tool{Name: "infra_docs", Description: "Busca e leitura em docs/ do repo infra"}, infraDocsHandler(env))
@@ -25,11 +25,16 @@ func Register(server *mcp.Server, env *Env) {
 type deployStatusInput struct {
 	App        string `json:"app,omitempty"`
 	ProjectDir string `json:"projectDir,omitempty"`
+	Env        string `json:"env,omitempty"`
 }
 
 func deployStatusHandler(env *Env) func(context.Context, *mcp.CallToolRequest, deployStatusInput) (*mcp.CallToolResult, actions.DeployStatusResult, error) {
 	return func(ctx context.Context, _ *mcp.CallToolRequest, in deployStatusInput) (*mcp.CallToolResult, actions.DeployStatusResult, error) {
-		out, err := actions.DeployStatus(ctx, withProjectDir(env, in.ProjectDir), in.App)
+		deployEnv := in.Env
+		if deployEnv == "" {
+			deployEnv = "production"
+		}
+		out, err := actions.DeployStatusForEnv(ctx, withProjectDir(env, in.ProjectDir), in.App, deployEnv)
 		return nil, out, err
 	}
 }

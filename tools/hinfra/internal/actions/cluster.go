@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gabehamasaki/infra/tools/hinfra/internal/argocd"
+	appctx "github.com/gabehamasaki/infra/tools/hinfra/internal/context"
 	"github.com/gabehamasaki/infra/tools/hinfra/internal/k8s"
 )
 
@@ -17,7 +18,20 @@ func ListApplications(ctx context.Context, env *Env) ([]argocd.ApplicationRow, e
 	if err != nil {
 		return nil, err
 	}
-	return ac.ListApplications(ctx)
+	rows, err := ac.ListApplications(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		if rows[i].Layer != argocd.LayerProjects {
+			continue
+		}
+		tag, err := appctx.ProductionImageTag(env.Runtime.InfraRepo, rows[i].Name)
+		if err == nil {
+			rows[i].Version = tag
+		}
+	}
+	return rows, nil
 }
 
 func AppHealthByName(ctx context.Context, env *Env, namespace string) (AppHealthResult, error) {

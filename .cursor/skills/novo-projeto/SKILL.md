@@ -10,9 +10,10 @@ Fluxo completo em [`docs/09-cicd.md`](../../../docs/09-cicd.md).
 ## Como o deploy funciona aqui
 
 ```
-push na main do repo do projeto
-   → Actions builda a imagem e publica no ghcr.io
-   → Actions commita a nova tag em apps/<projeto>/kustomization.yaml deste repo
+push de tag Git (v* produção; dev/* e hg/* quando overlays existirem)
+   → Actions valida commit na branch do ambiente (default main)
+   → Actions builda a imagem e publica no ghcr.io com a versão da tag
+   → Actions commita newTag em apps/<projeto>/kustomization.yaml deste repo
    → ArgoCD detecta o commit (polling ~3 min) e aplica
 ```
 
@@ -90,7 +91,7 @@ routing:
   webPath: /
 ```
 
-**Primeiro deploy monorepo com DB:** root-app refresh → Postgres role/DB ([`08-data-services.md`](../../../docs/08-data-services.md)) → sealed secret → CI com SHA → sync Argo → migration PreSync. Tabela de falhas em [`09-cicd.md`](../../../docs/09-cicd.md).
+**Primeiro deploy monorepo com DB:** root-app refresh → Postgres role/DB ([`08-data-services.md`](../../../docs/08-data-services.md)) → sealed secret → tag `v*` na main → sync Argo → migration PreSync. Tabela de falhas em [`09-cicd.md`](../../../docs/09-cicd.md).
 
 **5. Secret do CI:**
 

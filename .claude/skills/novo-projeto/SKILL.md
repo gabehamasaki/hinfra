@@ -10,7 +10,7 @@ Fluxo completo em [`docs/09-cicd.md`](../../../docs/09-cicd.md).
 ## Como o deploy funciona aqui
 
 ```
-push na main do repo do projeto
+push de tag Git (v* produção; dev/* e hg/* quando overlays existirem)
    → Actions builda a imagem e publica no ghcr.io
    → Actions commita a nova tag em apps/<projeto>/kustomization.yaml deste repo
    → ArgoCD detecta o commit (polling ~3 min) e aplica

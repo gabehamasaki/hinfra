@@ -96,7 +96,7 @@ Monorepo (api + web): `hinfra init` pergunta layout e gera `images` + `buildCont
 
 | Ferramenta | Tipo |
 | --- | --- |
-| `deploy_status` | leitura |
+| `deploy_status` | leitura (`env`: `production`, `dev`, `homolog`; retorna `version`) |
 | `app_health` | leitura |
 | `app_logs` | leitura |
 | `infra_docs` | leitura |
@@ -118,7 +118,7 @@ Monorepo (api + web): `hinfra init` pergunta layout e gera `images` + `buildCont
 | `1` | dashboard | CPU, memória, disco e rede do node; top pods; resumo dos Applications |
 | `2` | nodes | detalhe por node: capacity, uptime, kubelet, histórico de CPU e memória |
 | `3` | storage | uso do disco decomposto (imagens / resto / livre) e PVCs por tamanho |
-| `4` | apps | Applications do ArgoCD, filtráveis por camada e por nome |
+| `4` | apps | Applications do ArgoCD (coluna versão = `newTag` em produção), filtráveis por camada e por nome |
 
 Dentro de um app: `enter` detalhe, `l` logs, `d` pipeline de deploy, `a` refresh hard, `g` pula para o app do diretório atual. Na scene de nodes, `n` passa para o próximo node.
 

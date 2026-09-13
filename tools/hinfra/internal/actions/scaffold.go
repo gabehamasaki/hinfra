@@ -27,6 +27,7 @@ type ScaffoldAppInput struct {
 	NeedsMigration    bool
 	NeedsSealedSecret bool
 	MigrationCommand  string
+	Environments      map[string]appctx.HinfraEnvironment
 }
 
 type ScaffoldAppResult struct {
@@ -67,6 +68,16 @@ func ScaffoldApp(env *Env, in ScaffoldAppInput) (ScaffoldAppResult, error) {
 	}
 	if err != nil {
 		return ScaffoldAppResult{}, err
+	}
+	if len(in.Environments) > 0 {
+		imageRefs := []string{appctx.ImageRegistry + "/gabehamasaki/" + in.Name}
+		if in.Monorepo {
+			imageRefs = []string{
+				appctx.ImageRegistry + "/gabehamasaki/" + in.Name + "-api",
+				appctx.ImageRegistry + "/gabehamasaki/" + in.Name + "-web",
+			}
+		}
+		scaffold.AppendEnvironmentOverlayFiles(files, in.Name, imageRefs, in.Environments)
 	}
 	msg, err := scaffold.WriteFiles(env.Runtime.InfraRepo, files, in.Write)
 	checklist := scaffoldAppChecklist(in.Monorepo, in.Write)
@@ -139,20 +150,25 @@ func ScaffoldWorkflow(env *Env, in ScaffoldWorkflowInput) (ScaffoldWorkflowResul
 			AppPath:       app.AppPath,
 			Images:        app.Images,
 			BuildContexts: bc,
-		})
+		}, workflowHinfraConfig(app))
 	} else {
 		workflow = scaffold.RenderWorkflow(string(tmplBytes), scaffold.WorkflowParams{
 			ImageName: app.Image,
 			AppPath:   app.AppPath,
-		})
+		}, workflowHinfraConfig(app))
 	}
 	bc := app.BuildContexts
 	if app.IsMonorepo() && len(bc) == 0 {
 		bc = appctx.DefaultBuildContexts()
 	}
+	envs := appctx.DefaultEnvironments(app.Name)
+	if app.Hinfra != nil && len(app.Hinfra.Environments) > 0 {
+		envs = app.Hinfra.Environments
+	}
 	hinfra := scaffold.RenderHinfra(scaffold.HinfraParams{
 		App: app.Name, Image: app.Image, Images: app.Images, BuildContexts: bc, Routing: app.Routing,
 		AppPath: app.AppPath, Namespace: app.Namespace, Host: app.Host, Exposure: app.Exposure,
+		Environments: envs,
 	})
 	checklist := buildChecklist(app)
 	if !in.Write {
@@ -225,6 +241,18 @@ func hasSecret(app *appctx.AppContext) bool {
 		return false
 	}
 	return strings.Contains(string(out), "INFRA_REPO_TOKEN")
+}
+
+func workflowHinfraConfig(app *appctx.AppContext) *appctx.HinfraConfig {
+	if app.Hinfra != nil {
+		return app.Hinfra
+	}
+	return &appctx.HinfraConfig{
+		App:          app.Name,
+		AppPath:      app.AppPath,
+		Namespace:    app.Namespace,
+		Environments: appctx.DefaultEnvironments(app.Name),
+	}
 }
 
 func mustOrigin(projectRepo string) string {

@@ -54,6 +54,7 @@ type ApplicationRow struct {
 	HasChart   bool
 	Layer      Layer
 	Namespace  string
+	Version    string
 }
 
 func InferLayer(sourcePath string, hasChart bool) Layer {

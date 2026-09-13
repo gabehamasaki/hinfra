@@ -81,7 +81,8 @@ Prefira `hinfra init` no repo do projeto (single ou monorepo api+web). Com MCP: 
    - **Monorepo (api + web):** `hinfra init` ou `buildContexts` + `images` no `hinfra.yml`; manifestos via `scaffold app --monorepo` (referência [`apps/schedule-visits/`](apps/schedule-visits/)).
 4. Configurar no repo do projeto o secret `INFRA_REPO_TOKEN` (PAT fine-grained, restrito a este repo `infra`, permissão Contents: Read/Write).
 5. Se o pacote do GHCR for privado, criar um `imagePullSecret` no namespace do projeto (documentar no `deployment.yaml`).
-6. Commitar e dar push — o ArgoCD sincroniza por polling (~3min) automaticamente.
+6. Deploy por **tag Git** (`v*` na `main` para produção) — ver [`docs/09-cicd.md`](docs/09-cicd.md). O ArgoCD sincroniza o bump no repo infra por polling (~3min).
+7. `hinfra tui` (scene apps) mostra a **versão** em produção de cada projeto (`newTag` no kustomization).
 
 ## Segredos
 

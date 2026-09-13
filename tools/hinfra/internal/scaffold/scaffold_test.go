@@ -28,7 +28,7 @@ func TestRenderWorkflow(t *testing.T) {
 	out := RenderWorkflow(string(tmpl), WorkflowParams{
 		ImageName: "gabehamasaki/my-portfolio",
 		AppPath:   "apps/my-portfolio",
-	})
+	}, nil)
 	if strings.Contains(out, "CHANGE-ME") {
 		t.Fatalf("template still has CHANGE-ME")
 	}
@@ -85,7 +85,7 @@ func TestRenderMonorepoWorkflow(t *testing.T) {
 			"web": "gabehamasaki/my-app-web",
 		},
 		BuildContexts: appctx.BackendFrontendBuildContexts(),
-	})
+	}, nil)
 	if strings.Contains(out, "CHANGE-ME") {
 		t.Fatalf("template still has CHANGE-ME: %s", out)
 	}
