@@ -31,16 +31,25 @@ No console (`argocd.<infra_domain>`), filtre por label **`hinfra.layer=platform`
 
 | Application | O que sincroniza |
 | --- | --- |
-| `monitoring` | Multi-source: chart `kube-prometheus-stack` (Helm) + Kustomize em `platform/observability/` (middleware, Discord, PodMonitor) |
+| `monitoring` | Kustomize em `platform/observability/` — middleware tailnet, alertmanager-discord, PodMonitor do cert-manager |
 
-O `argocd-cm` inclui `kustomize.buildOptions: --enable-helm` para outros paths que usem `helmCharts` no Kustomize; o Application `monitoring` **não** depende disso — o chart vem como source Helm nativo.
+### Por que o chart não está no ArgoCD
+
+O `kube-prometheus-stack` é instalado pelo **Helm via Ansible**, não pelo Application.
+
+O `helm pull` precisa do `index.yaml` do `prometheus-community` (6,3 MB) antes de pegar o chart. Desta VPS o GitHub Pages entrega a ~126 KB/s, então só o índice leva ~50 s; somado ao tarball, passa do timeout de 120 s do helm embutido no repo-server e o Application trava em `Unknown` com `context deadline exceeded`. O mesmo `helm pull` contra `ghcr.io` leva 3 s — é a rota até o Pages que é lenta, não o cluster.
+
+Para trazer o chart de volta ao GitOps, escolha uma origem que não dependa do `index.yaml`: espelhar o chart no seu GHCR como OCI, ou versionar o chart em `platform/observability/charts/` (6,7 MB, 321 arquivos).
+
+O `argocd-cm` mantém `kustomize.buildOptions: --enable-helm` para paths que usem `helmCharts` no Kustomize.
 
 Cert-manager, Sealed Secrets, KEDA e o próprio ArgoCD **continuam só no Ansible** (dependências do GitOps) — não aparecem como Applications.
 
 ## Instalar ou atualizar
 
 1. **Secrets** (uma vez ou ao rotacionar): role `observability_secrets` no playbook Ansible.
-2. **Manifestos e Helm values**: commit no repo `hinfra` → o ArgoCD sincroniza (~3 min).
+2. **Chart e values**: `ansible/playbooks/platform-observability.yml` aplica o `kube-prometheus-stack` com [`platform/observability/values.yaml`](../platform/observability/values.yaml).
+3. **Manifests extras**: commit no repo `hinfra` → o ArgoCD sincroniza (~3 min).
 
 ```bash
 cd ansible
@@ -48,17 +57,7 @@ script -qec "ansible-playbook -i inventory/hosts.ini site.yml \
   --private-key ../.secrets/vps-1_deploy_ed25519" /dev/null
 ```
 
-Alterar thresholds ou recursos: edite [`platform/observability/values.yaml`](../platform/observability/values.yaml) e deixe o Application `monitoring` sincronizar.
-
-### Migração do Ansible Helm (instalação antiga)
-
-Se o stack foi instalado pelo role `observability` (Helm via Ansible), antes do primeiro sync do ArgoCD:
-
-```bash
-helm uninstall kube-prometheus-stack -n monitoring   # na VPS, com KUBECONFIG
-```
-
-Depois commit + push do `platform-root` e sync. O ArgoCD recria o release com o mesmo nome.
+Alterar thresholds ou recursos: edite [`platform/observability/values.yaml`](../platform/observability/values.yaml) e rode o playbook de novo.
 
 ## Canais de alerta
 

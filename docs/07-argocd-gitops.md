@@ -16,7 +16,7 @@ Dois App of Apps costumam coexistir na VPS de produção:
 | Raiz | Repositório | Conteúdo |
 | --- | --- | --- |
 | `workloads-root` | `hinfra-workloads` | Projetos e serviços de dados |
-| `platform-root` | `hinfra` (este repo) | Plataforma visível no GitOps — hoje **observabilidade** (`monitoring`, `monitoring-extras`) |
+| `platform-root` | `hinfra` (este repo) | Plataforma visível no GitOps — hoje **observabilidade** (`monitoring`) |
 
 Applications de plataforma usam o AppProject **`platform`** e o label `hinfra.layer=platform`.
 

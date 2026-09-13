@@ -9,20 +9,13 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: platform
-  sources:
-    - repoURL: https://github.com/gabehamasaki/hinfra.git
-      targetRevision: main
-      ref: values
-    - repoURL: https://prometheus-community.github.io/helm-charts
-      chart: kube-prometheus-stack
-      targetRevision: "70.2.1"
-      helm:
-        releaseName: kube-prometheus-stack
-        valueFiles:
-          - $values/platform/observability/values.yaml
-    - repoURL: https://github.com/gabehamasaki/hinfra.git
-      targetRevision: main
-      path: platform/observability
+  # Só os manifests extras. O chart kube-prometheus-stack é instalado pelo Ansible
+  # porque a VPS baixa o index.yaml do prometheus-community a ~126 KB/s e o
+  # helm do repo-server desiste em 120s — ver docs/13-observabilidade.md.
+  source:
+    repoURL: https://github.com/gabehamasaki/hinfra.git
+    targetRevision: main
+    path: platform/observability
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
