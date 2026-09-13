@@ -12,17 +12,18 @@ hinfra init --machine
 
 # ou manual:
 mkdir -p ~/.config/hinfra
-cat > ~/.config/hinfra/config.yaml <<EOF
+cat > ~/.config/hinfra/config.yaml <<'EOF'
 infraRepo: /home/hamasaki/www/infra
+workloadsRepo: /home/hamasaki/www/infra/hinfra-workloads
 EOF
 
 make -C tools/hinfra install
 hinfra doctor
-
-# registrar MCP nos agents (wizard multi-agent)
 hinfra mcp install
 # ou: hinfra mcp install --cursor --codex --all
 ```
+
+O endereço para checar a tailnet vem do `server:` do kubeconfig (não precisa de IP no repo). Opcional: `tailnetAPI: 100.x.x.x:6443` ou `HINFRA_TAILNET_API`.
 
 Config legada `~/.config/infra-mcp/config.yaml` ainda funciona com aviso — migre para `~/.config/hinfra/`.
 
