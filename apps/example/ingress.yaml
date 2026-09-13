@@ -4,6 +4,9 @@ metadata:
   name: example
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+    # Rate limit por cliente. Só faz sentido em Ingress que recebe tráfego pela
+    # Cloudflare: o middleware identifica o cliente pelo header CF-Connecting-IP.
+    traefik.ingress.kubernetes.io/router.middlewares: "kube-system-public-rate-limit@kubernetescrd"
 spec:
   ingressClassName: traefik
   tls:

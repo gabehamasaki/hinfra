@@ -212,9 +212,11 @@ func mustRender(name, tmpl string, data interface{}) (string, error) {
 
 func DNSHint(exposure string) string {
 	if exposure == "tailnet" {
-		return "<TAILNET_IP>"
+		return "<TAILNET_IP> (DNS only — a Cloudflare não proxia IP CGNAT)"
 	}
-	return "<VPS_PUBLIC_IP>"
+	// Proxied não é opcional: o UFW só aceita 80/443 vindo dos ranges da Cloudflare,
+	// então um registro público em DNS only fica inalcançável.
+	return "<VPS_PUBLIC_IP> (proxied)"
 }
 
 var deploymentTemplate = `apiVersion: apps/v1
@@ -276,6 +278,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-cloudflare
 {{ if eq .Exposure "tailnet" }}    traefik.ingress.kubernetes.io/router.middlewares: "argocd-argocd-tailnet-only@kubernetescrd"
+{{ else }}    traefik.ingress.kubernetes.io/router.middlewares: "kube-system-public-rate-limit@kubernetescrd"
 {{ end }}spec:
   ingressClassName: traefik
   tls:
