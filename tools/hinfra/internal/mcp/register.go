@@ -16,6 +16,7 @@ func Register(server *mcp.Server, env *Env) {
 	mcp.AddTool(server, &mcp.Tool{Name: "infra_docs", Description: "Busca e leitura em docs/ do repo infra"}, infraDocsHandler(env))
 	mcp.AddTool(server, &mcp.Tool{Name: "app_restart", Description: "Rollout restart restrito a apps/ do repo infra"}, appRestartHandler(env))
 	mcp.AddTool(server, &mcp.Tool{Name: "argocd_refresh", Description: "Refresh hard (use root:true após novo Application no infra)"}, argocdRefreshHandler(env))
+	mcp.AddTool(server, &mcp.Tool{Name: "argocd_sync", Description: "Refresh + sync Argo CD (projects:true para todos os apps/; force sync)"}, argocdSyncHandler(env))
 	mcp.AddTool(server, &mcp.Tool{Name: "rollback", Description: "Rollback GitOps via kustomize edit set image (commit pra frente)"}, rollbackHandler(env))
 	mcp.AddTool(server, &mcp.Tool{Name: "scaffold_app", Description: "Gera manifestos no repo infra (write:false preview por padrão)"}, scaffoldAppHandler(env))
 	mcp.AddTool(server, &mcp.Tool{Name: "scaffold_workflow", Description: "Gera workflow de deploy e hinfra.yml no repo do projeto"}, scaffoldWorkflowHandler(env))
@@ -107,6 +108,39 @@ func argocdRefreshHandler(env *Env) func(context.Context, *mcp.CallToolRequest, 
 			return nil, out, err
 		}
 		out, err := actions.ArgoCDRefresh(ctx, e, in.App)
+		return nil, out, err
+	}
+}
+
+type argocdSyncInput struct {
+	App        string `json:"app,omitempty"`
+	Root       bool   `json:"root,omitempty"`
+	Projects   bool   `json:"projects,omitempty"`
+	Force      *bool  `json:"force,omitempty"`
+	Wait       *bool  `json:"wait,omitempty"`
+	NoRefresh  bool   `json:"noRefresh,omitempty"`
+	ProjectDir string `json:"projectDir,omitempty"`
+}
+
+func argocdSyncHandler(env *Env) func(context.Context, *mcp.CallToolRequest, argocdSyncInput) (*mcp.CallToolResult, actions.ArgoCDSyncResult, error) {
+	return func(ctx context.Context, _ *mcp.CallToolRequest, in argocdSyncInput) (*mcp.CallToolResult, actions.ArgoCDSyncResult, error) {
+		e := withProjectDir(env, in.ProjectDir)
+		force := true
+		if in.Force != nil {
+			force = *in.Force
+		}
+		wait := true
+		if in.Wait != nil {
+			wait = *in.Wait
+		}
+		out, err := actions.ArgoCDSync(ctx, e, actions.ArgoCDSyncInput{
+			AppOverride: in.App,
+			Root:        in.Root,
+			Projects:    in.Projects,
+			Force:       force,
+			Refresh:     !in.NoRefresh,
+			Wait:        wait,
+		})
 		return nil, out, err
 	}
 }

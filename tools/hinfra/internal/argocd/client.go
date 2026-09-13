@@ -100,14 +100,17 @@ func (c *Client) Refresh(ctx context.Context, name string) error {
 	return err
 }
 
-func RefreshTarget(appName string, sourcePath string, hasChart bool) string {
+func RefreshTarget(appName string, sourcePath string, hasChart bool, rootApp string) string {
+	if rootApp == "" {
+		rootApp = "root-app"
+	}
 	if hasChart || strings.HasPrefix(sourcePath, "data-services/") {
-		return "root-app"
+		return rootApp
 	}
 	if strings.HasPrefix(sourcePath, "apps/") {
 		return appName
 	}
-	return "root-app"
+	return rootApp
 }
 
 func (c *Client) SourcePath(ctx context.Context, name string) (string, bool, error) {

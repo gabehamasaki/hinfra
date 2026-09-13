@@ -199,8 +199,42 @@ func newArgoCDCmd() *cobra.Command {
 		},
 	}
 	refresh.Flags().StringVar(&app, "app", "", "override do app")
-	refresh.Flags().BoolVar(&root, "root", false, "refresh hard no root-app (novo Application em clusters/production/apps)")
+	refresh.Flags().BoolVar(&root, "root", false, "refresh hard no Application root (argocdRootApp na config; default workloads-root se workloadsRepo separado)")
 	cmd.AddCommand(refresh)
+
+	var force, projects, wait, noRefresh bool
+	syncCmd := &cobra.Command{
+		Use:   "sync",
+		Short: "Refresh + sync (aplica Git no cluster; use após mudar manifestos)",
+		Run: func(_ *cobra.Command, _ []string) {
+			env := loadEnvValidated()
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+			defer cancel()
+			out, err := actions.ArgoCDSync(ctx, env, actions.ArgoCDSyncInput{
+				AppOverride: app,
+				Root:        root,
+				Projects:    projects,
+				Force:       force,
+				Refresh:     !noRefresh,
+				Wait:        wait,
+			})
+			if err != nil {
+				fatal(err)
+			}
+			if err := printOrJSON(out, func() {
+				fmt.Println(out.Message)
+			}); err != nil {
+				fatal(err)
+			}
+		},
+	}
+	syncCmd.Flags().StringVar(&app, "app", "", "override do app (default: contexto do cwd / hinfra.yml)")
+	syncCmd.Flags().BoolVar(&root, "root", false, "sync no Application root (argocdRootApp na config)")
+	syncCmd.Flags().BoolVar(&projects, "projects", false, "sync todos os Applications em apps/ (my-portfolio, study, …)")
+	syncCmd.Flags().BoolVar(&force, "force", true, "sync com Force=true (recursos que resistem ao apply)")
+	syncCmd.Flags().BoolVar(&noRefresh, "no-refresh", false, "não fazer refresh hard antes do sync")
+	syncCmd.Flags().BoolVar(&wait, "wait", true, "aguardar operação terminar (até 3 min por app)")
+	cmd.AddCommand(syncCmd)
 	return cmd
 }
 

@@ -15,6 +15,7 @@ mkdir -p ~/.config/hinfra
 cat > ~/.config/hinfra/config.yaml <<'EOF'
 infraRepo: /home/hamasaki/www/infra
 workloadsRepo: /home/hamasaki/www/infra/hinfra-workloads
+argocdRootApp: workloads-root
 EOF
 
 make -C tools/hinfra install
@@ -50,6 +51,7 @@ hinfra logs [--app] [--pod] [--tail 100] [--previous]
 hinfra docs search targetRevision
 hinfra restart [--app]
 hinfra argocd refresh [--app] [--root]
+hinfra argocd sync [--app] [--root] [--projects] [--force] [--wait]
 hinfra seal secret -f secret.yaml [-o apps/<app>/sealed-secret.yaml] [--execute]
 hinfra scaffold app --name my-app --host my-app.hamasakis.dev [--monorepo] [--write]
 hinfra scaffold workflow [--app] [--monorepo] [--write]
@@ -102,7 +104,8 @@ Monorepo (api + web): `hinfra init` pergunta layout e gera `images` + `buildCont
 | `app_logs` | leitura |
 | `infra_docs` | leitura |
 | `app_restart` | mutação |
-| `argocd_refresh` | mutação (`root: true` → root-app) |
+| `argocd_refresh` | mutação (`root: true` → argocdRootApp na config) |
+| `argocd_sync` | mutação (refresh + sync; `projects: true` para todos em `apps/`) |
 | `rollback` | mutação (`confirm: true`) |
 | `scaffold_app` | scaffold (`monorepo: true`) |
 | `scaffold_workflow` | scaffold (`monorepo: true`) |
