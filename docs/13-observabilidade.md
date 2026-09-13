@@ -1,6 +1,6 @@
 # 13 — Observabilidade
 
-Alertas 24/7 e dashboards na **camada de plataforma**, visíveis no **ArgoCD** (`platform-root` → Applications `monitoring` e `monitoring-extras`). Não fica no repo `hinfra-workloads`.
+Alertas 24/7 e dashboards na **camada de plataforma**, visíveis no **ArgoCD** (`platform-root` → Application `monitoring`). Não fica no repo `hinfra-workloads`.
 
 ## O que roda no cluster
 
@@ -31,7 +31,9 @@ No console (`argocd.<infra_domain>`), filtre por label **`hinfra.layer=platform`
 
 | Application | O que sincroniza |
 | --- | --- |
-| `monitoring` | Kustomize em `platform/observability/` (Helm chart + middleware, Discord, PodMonitor) |
+| `monitoring` | Multi-source: chart `kube-prometheus-stack` (Helm) + Kustomize em `platform/observability/` (middleware, Discord, PodMonitor) |
+
+O `argocd-cm` inclui `kustomize.buildOptions: --enable-helm` para outros paths que usem `helmCharts` no Kustomize; o Application `monitoring` **não** depende disso — o chart vem como source Helm nativo.
 
 Cert-manager, Sealed Secrets, KEDA e o próprio ArgoCD **continuam só no Ansible** (dependências do GitOps) — não aparecem como Applications.
 

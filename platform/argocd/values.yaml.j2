@@ -79,6 +79,9 @@ applicationSet:
   replicas: 0
 
 configs:
+  cm:
+    # Kustomize helmCharts em platform/observability exige --enable-helm no repo-server.
+    kustomize.buildOptions: --enable-helm
   params:
     server.insecure: true   # TLS é terminado no Ingress (Traefik), não no próprio ArgoCD server
 
