@@ -1,0 +1,56 @@
+---
+# O Traefik vem embutido no k3s como HelmChart em kube-system. A forma suportada de
+# alterar os values sem perder a instalação gerenciada pelo k3s é um HelmChartConfig
+# com o mesmo nome/namespace: o k3s faz merge com os values dele.
+#
+# Toda chave abaixo foi conferida contra o values.yaml do chart (linha 40.x). Isso
+# não é zelo excessivo: valor de Helm que não existe é ignorado em silêncio, então
+# um typo aqui vira "configurei e não funcionou" sem nenhuma mensagem de erro.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      spec:
+        # Sem isso o kube-proxy aplica SNAT e o Traefik enxerga um IP da rede de pods
+        # como origem, o que faz todo IPAllowList responder 403 pra todo mundo —
+        # inclusive pra quem está legitimamente na tailnet. Ver docs/11-armadilhas.md.
+        externalTrafficPolicy: Local
+    logs:
+      access:
+        enabled: true
+        format: json
+        fields:
+          headers:
+            # O default do chart é dropar todos os headers. Estes três são o que
+            # permite correlacionar uma requisição com o log da Cloudflare.
+            defaultmode: drop
+            names:
+              User-Agent: keep
+              Cf-Ray: keep
+              Cf-Connecting-Ip: keep
+    ports:
+      web:
+        forwardedHeaders:
+          # Só de dentro destes ranges o Traefik aceita X-Forwarded-For/CF-Connecting-IP.
+          # Confiar em qualquer origem permitiria a qualquer cliente forjar o próprio IP
+          # e escapar do rate limit (ou aparecer como outra pessoa no access log).
+          trustedIPs:
+{% for cidr in cloudflare_ip_ranges_v4 + cloudflare_ip_ranges_v6 %}
+            - "{{ cidr }}"
+{% endfor %}
+      websecure:
+        forwardedHeaders:
+          trustedIPs:
+{% for cidr in cloudflare_ip_ranges_v4 + cloudflare_ip_ranges_v6 %}
+            - "{{ cidr }}"
+{% endfor %}
+        http:
+          # Middlewares aplicados a TODA requisição que entra pela 443. Só entram aqui
+          # os que são inofensivos pra qualquer origem — o rate limit não é um deles,
+          # ver o comentário em middlewares.yaml.j2.
+          middlewares:
+            - kube-system-security-headers@kubernetescrd

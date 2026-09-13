@@ -1,0 +1,54 @@
+---
+# O Traefik não é instalado aqui — ele já vem embutido no k3s. Este role só sobrescreve
+# os values dele (via HelmChartConfig) e cria os middlewares compartilhados.
+#
+# Roda antes do role argocd de propósito: o Ingress do ArgoCD depende do
+# `externalTrafficPolicy: Local` que sai daqui pra que o IPAllowList dele funcione.
+- name: Renderizar o HelmChartConfig e os Middlewares do Traefik
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../platform/traefik/{{ item.src }}"
+    dest: "/tmp/{{ item.dest }}"
+    mode: "0600"
+  loop:
+    - { src: middlewares.yaml.j2, dest: traefik-middlewares.yaml }
+    - { src: helmchartconfig.yaml.j2, dest: traefik-helmchartconfig.yaml }
+
+# Antes do HelmChartConfig: ele referencia o security-headers na lista de middlewares
+# do entrypoint websecure. Middleware referenciado que não existe faz o Traefik
+# recusar a requisição inteira, então a ordem aqui não é estética.
+- name: Aplicar os Middlewares (security-headers e public-rate-limit)
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/traefik-middlewares.yaml
+
+- name: Aplicar o HelmChartConfig do Traefik (trustedIPs da Cloudflare, access log, externalTrafficPolicy)
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/traefik-helmchartconfig.yaml
+
+# O helm-controller do k3s reage ao HelmChartConfig com um Job de upgrade, que só
+# depois recria o pod. Checar apenas "Deployment disponível" daria um falso positivo:
+# o Traefik antigo ainda está no ar e saudável nesse intervalo. O que prova que o
+# upgrade pegou é a flag aparecer nos args do container.
+- name: Esperar o Traefik subir já com os trustedIPs nos args
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: traefik
+    namespace: kube-system
+  register: traefik_deployment
+  until: >-
+    traefik_deployment.resources | length > 0
+    and traefik_deployment.resources[0].spec.template.spec.containers[0].args
+        | select('search', 'forwardedHeaders.trustedIPs') | list | length > 0
+  retries: 30
+  delay: 10
+
+- name: Confirmar que o Service do Traefik ficou com externalTrafficPolicy Local
+  kubernetes.core.k8s_info:
+    kind: Service
+    name: traefik
+    namespace: kube-system
+  register: traefik_service
+  failed_when: >-
+    traefik_service.resources | length == 0
+    or traefik_service.resources[0].spec.externalTrafficPolicy != 'Local'

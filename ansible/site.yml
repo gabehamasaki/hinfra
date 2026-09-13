@@ -43,6 +43,7 @@
     - sealed_secrets
     - cert_manager
     - observability_secrets
+    - traefik
     - argocd
     - keda
     - cnpg_operator

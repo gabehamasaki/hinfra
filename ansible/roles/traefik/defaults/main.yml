@@ -1,0 +1,11 @@
+---
+# Rate limit dos Ingress públicos. `average` é a taxa sustentada por `period` e por
+# cliente (o cliente é identificado pelo header CF-Connecting-IP, ver middlewares).
+# `burst` é o que se tolera num pico curto antes de começar a responder 429.
+#
+# Estes números são folgados de propósito: o objetivo é conter abuso e scraping, não
+# fazer policiamento fino de tráfego. Quem absorve volume de verdade é a Cloudflare,
+# que rejeita antes de gastar CPU desta VPS.
+traefik_rate_limit_average: 50
+traefik_rate_limit_burst: 100
+traefik_rate_limit_period: 1s
