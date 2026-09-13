@@ -37,7 +37,15 @@ func RunMachine() error {
 			return err
 		}
 	}
-	if err := config.Save(abs, workloadsAbs); err != nil {
+	defaultRoot := config.ResolveArgocdRootApp("", abs, workloadsAbs)
+	fmt.Printf("Argo CD root Application [%s]: ", defaultRoot)
+	rootIn := strings.TrimSpace(readLine(reader))
+	argocdRoot := config.ResolveArgocdRootApp(rootIn, abs, workloadsAbs)
+	if err := config.SaveFull(config.Config{
+		InfraRepo:     abs,
+		WorkloadsRepo: workloadsAbs,
+		ArgocdRootApp: argocdRoot,
+	}); err != nil {
 		return err
 	}
 	fmt.Println("Config salva em ~/.config/hinfra/config.yaml")

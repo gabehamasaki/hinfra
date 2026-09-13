@@ -14,7 +14,8 @@ const KubeconfigName = "vps-1.kubeconfig"
 type Config struct {
 	InfraRepo     string `yaml:"infraRepo"`
 	WorkloadsRepo string `yaml:"workloadsRepo"`
-	TailnetAPI    string `yaml:"tailnetAPI"` // opcional; default = server do kubeconfig
+	TailnetAPI    string `yaml:"tailnetAPI"`    // opcional; default = server do kubeconfig
+	ArgocdRootApp string `yaml:"argocdRootApp"` // Application root no Argo CD (ex.: workloads-root)
 }
 
 type Runtime struct {
@@ -22,6 +23,22 @@ type Runtime struct {
 	WorkloadsRepo string
 	Kubeconfig    string
 	TailnetAPI    string
+	ArgocdRootApp string
+}
+
+// ResolveArgocdRootApp picks the Argo CD Application used by `hinfra argocd refresh --root`.
+func ResolveArgocdRootApp(explicit string, infraRepo, workloadsRepo string) string {
+	if s := strings.TrimSpace(explicit); s != "" {
+		return s
+	}
+	if workloadsRepo != infraRepo {
+		return "workloads-root"
+	}
+	return "root-app"
+}
+
+func (r *Runtime) ArgocdRootApplication() string {
+	return r.ArgocdRootApp
 }
 
 // AppsRepo is where GitOps app manifests and kustomization.yaml live (often a private workloads repo).
@@ -84,21 +101,67 @@ func Load() (*Runtime, error) {
 		return nil, fmt.Errorf("config em %s: %w", path, err)
 	}
 
+	rootApp := ResolveArgocdRootApp(cfg.ArgocdRootApp, infraRepo, workloadsRepo)
+
 	return &Runtime{
 		InfraRepo:     infraRepo,
 		WorkloadsRepo: workloadsRepo,
 		Kubeconfig:    kubeconfig,
 		TailnetAPI:    tailnetAPI,
+		ArgocdRootApp: rootApp,
 	}, nil
 }
 
+func readConfigFile(path string) (Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, err
+	}
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return Config{}, err
+	}
+	return cfg, nil
+}
+
 func Save(infraRepo, workloadsRepo string) error {
+	return SaveFull(Config{InfraRepo: infraRepo, WorkloadsRepo: workloadsRepo})
+}
+
+func SaveFull(cfg Config) error {
 	dir := filepath.Join(os.Getenv("HOME"), ".config", "hinfra")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	path := filepath.Join(dir, "config.yaml")
-	cfg := Config{InfraRepo: infraRepo, WorkloadsRepo: workloadsRepo}
+
+	infraAbs, err := filepath.Abs(cfg.InfraRepo)
+	if err != nil {
+		return fmt.Errorf("infraRepo inválido: %w", err)
+	}
+	workloadsAbs := infraAbs
+	if strings.TrimSpace(cfg.WorkloadsRepo) != "" {
+		workloadsAbs, err = filepath.Abs(cfg.WorkloadsRepo)
+		if err != nil {
+			return fmt.Errorf("workloadsRepo inválido: %w", err)
+		}
+	}
+
+	if existing, err := readConfigFile(path); err == nil {
+		if cfg.TailnetAPI == "" {
+			cfg.TailnetAPI = existing.TailnetAPI
+		}
+		if strings.TrimSpace(cfg.ArgocdRootApp) == "" {
+			cfg.ArgocdRootApp = existing.ArgocdRootApp
+		}
+	}
+	cfg.InfraRepo = infraAbs
+	cfg.WorkloadsRepo = workloadsAbs
+	if workloadsAbs == infraAbs {
+		cfg.WorkloadsRepo = ""
+	}
+	cfg.ArgocdRootApp = ResolveArgocdRootApp(cfg.ArgocdRootApp, infraAbs, workloadsAbs)
+
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return err
