@@ -21,9 +21,9 @@ Todos os três foram escolhidos com um critério explícito: sair de instância 
 
 | Serviço | Para escalar | Onde |
 | --- | --- | --- |
-| Postgres | `instances: 1` → `3` | `data-services/postgres/cluster.yaml` |
-| Valkey | `replica.enabled: true` + `replica.replicas` | `clusters/production/apps/valkey-app.yaml` |
-| RustFS | `mode.distributed.enabled: true` (mín. 2 nodes) | `clusters/production/apps/rustfs-app.yaml` |
+| Postgres | `instances: 1` → `3` | `hinfra-workloads/data-services/postgres/cluster.yaml` |
+| Valkey | `replica.enabled: true` + `replica.replicas` | `hinfra-workloads` → `clusters/production/apps/valkey-app.yaml` |
+| RustFS | `mode.distributed.enabled: true` (mín. 2 nodes) | `hinfra-workloads` → `clusters/production/apps/rustfs-app.yaml` |
 
 ---
 
@@ -201,7 +201,7 @@ O que funciona bem:
 1. **Escala por horário** (`cron` scaler) — desliga fora do horário de uso. Confiável e simples.
 2. **Liga/desliga manual** — `kubectl scale`, para períodos sem uso previsto.
 
-Exemplo em `data-services/rustfs/idle-schedule.yaml.example`:
+Exemplo em `data-services/example/rustfs/idle-schedule.yaml.example` (kit público) ou `hinfra-workloads/data-services/rustfs/` (produção):
 
 ```yaml
 apiVersion: keda.sh/v1alpha1

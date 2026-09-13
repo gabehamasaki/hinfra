@@ -236,7 +236,7 @@ Não funciona para recursos geridos por operador (o `Cluster` do Postgres) — o
 | Serviço | Mudança |
 | --- | --- |
 | Postgres | `instances: 1` → `3` em `data-services/postgres/cluster.yaml` |
-| Valkey | `replica.enabled: true` em `clusters/production/apps/valkey-app.yaml` |
-| RustFS | `mode.distributed.enabled: true` em `clusters/production/apps/rustfs-app.yaml` |
+| Valkey | `replica.enabled: true` em `hinfra-workloads/clusters/production/apps/valkey-app.yaml` |
+| RustFS | `mode.distributed.enabled: true` em `hinfra-workloads/clusters/production/apps/rustfs-app.yaml` |
 
 Commit e push — o ArgoCD aplica.

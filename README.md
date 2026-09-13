@@ -29,7 +29,8 @@ hinfra init --machine   # aponta hinfa + opcional hinfra-workloads privado
 | --- | --- |
 | `ansible/` | Provisionamento (1× por VPS) |
 | `platform/` | cert-manager, ArgoCD values (via Ansible) |
-| `clusters/production/` | `root-app` com Applications de **exemplo** |
+| `clusters/production/` | `root-app` → só `example-app` (data-services: copiar de `examples/argocd/`) |
+| `examples/argocd/` | Templates Postgres / Valkey / RustFS para adotantes |
 | `apps/example/` | App de referência |
 | `data-services/example/` | Postgres CNPG de referência |
 | `tools/hinfra/` | CLI, TUI, MCP |

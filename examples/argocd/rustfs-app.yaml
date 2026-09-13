@@ -1,3 +1,4 @@
+# Copie para clusters/production/apps/ ao provisionar o kit (adotantes).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

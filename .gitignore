@@ -6,7 +6,8 @@ ansible/group_vars/all/local.yml
 !ansible/group_vars/all/local.yml.example
 ansible/inventory/hosts.ini
 !ansible/inventory/hosts.ini.example
-.local-hinfra-workloads/
+# Clone local do GitOps de produção (repo privado no GitHub)
+hinfra-workloads/
 .tmp-*/
 ansible/.secrets/          # chaves SSH privadas geradas pelo bootstrap.yml - NUNCA commitar
 .secrets/
@@ -26,3 +27,4 @@ kubeconfig*.yaml
 # é o que faz qualquer sessão neste repo já saber operar a infra. Só a config
 # pessoal de cada máquina fica de fora.
 .claude/settings.local.json
+scripts/git-filter-repo

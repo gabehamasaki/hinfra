@@ -1,6 +1,4 @@
-# Valkey compartilhado (fork open-source do Redis, mesma API). Standalone por
-# enquanto - pra virar master+réplicas quando houver workers, basta trocar
-# replica.enabled pra true e ajustar replica.replicas, sem mudar mais nada.
+# Copie para clusters/production/apps/ ao provisionar o kit (adotantes).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
