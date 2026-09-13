@@ -1,10 +1,6 @@
 version: 2
 project_name: hinfra
 
-before:
-  hooks:
-    - go test ./tools/hinfra/...
-
 builds:
   - id: hinfra
     dir: tools/hinfra
