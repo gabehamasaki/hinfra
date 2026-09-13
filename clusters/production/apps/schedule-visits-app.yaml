@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: schedule-visits
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/gabehamasaki/infra.git
+    targetRevision: main
+    path: apps/schedule-visits
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: schedule-visits
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
