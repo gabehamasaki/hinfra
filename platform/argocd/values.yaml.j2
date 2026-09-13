@@ -84,6 +84,7 @@ configs:
     kustomize.buildOptions: --enable-helm
   params:
     server.insecure: true   # TLS é terminado no Ingress (Traefik), não no próprio ArgoCD server
+    controller.repo.server.timeout.seconds: "600"
 
 server:
   resources:
@@ -102,6 +103,9 @@ server:
     tls: true
 
 repoServer:
+  env:
+    - name: ARGOCD_EXEC_TIMEOUT
+      value: "10m"   # kube-prometheus-stack template pode passar de 90s no primeiro render
   resources:
     requests:
       cpu: 50m
@@ -110,6 +114,9 @@ repoServer:
       memory: 256Mi
 
 controller:
+  env:
+    - name: ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER_TIMEOUT_SECONDS
+      value: "600"
   resources:
     requests:
       cpu: 100m
