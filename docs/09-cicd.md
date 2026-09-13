@@ -101,7 +101,9 @@ Detalhes:
 
 ### Monorepo (api + web)
 
-Para projetos com várias imagens no mesmo repo, use o template [`deploy-workflow-monorepo-template.yml`](deploy-workflow-monorepo-template.yml). Convenção: Dockerfiles em `./api` e `./web`, imagens `gabehamasaki/<app>-api` e `gabehamasaki/<app>-web`.
+Para projetos com várias imagens no mesmo repo, use o template [`deploy-workflow-monorepo-template.yml`](deploy-workflow-monorepo-template.yml). Convenção padrão: Dockerfiles em `./api` e `./web`; repos com `backend/`/`frontend/` declaram paths em `buildContexts` (ver abaixo).
+
+**Docker `file` no GitHub Actions:** o campo `file` do `docker/build-push-action` é relativo à **raiz do repositório**, não ao `context`. Exemplo correto: `context: ./backend` + `file: backend/docker/Dockerfile` (errado: `file: docker/Dockerfile`).
 
 Binding explícito no repo do projeto via `hinfra.yml`:
 
@@ -114,6 +116,13 @@ namespace: my-app
 images:
   api: gabehamasaki/my-app-api
   web: gabehamasaki/my-app-web
+buildContexts:
+  api:
+    context: ./backend
+    file: backend/docker/Dockerfile
+  web:
+    context: ./frontend
+    file: frontend/Dockerfile
 routing:
   apiPath: /api
   webPath: /
@@ -129,7 +138,28 @@ images:
     newTag: latest
 ```
 
-O `scaffold_workflow` do MCP escolhe o template certo automaticamente quando `hinfra.yml` tem bloco `images`. O `deploy_status` exige que cada imagem esteja rodando com o SHA do deploy.
+O `scaffold_workflow` do MCP escolhe o template certo quando `hinfra.yml` tem bloco `images`, ou com `monorepo: true`. O `deploy_status` exige que cada imagem esteja rodando com o SHA do deploy.
+
+### Primeiro deploy (monorepo com DB)
+
+Ordem que evita sync preso, `:latest` no cluster e probes falhando antes da migration:
+
+1. Manifestos + Application no repo infra; **`hinfra argocd refresh --root`** (registra o `-app.yaml` novo).
+2. `hinfra seal secret` (ou kubeseal) + role/DB no Postgres — [08 - data services](08-data-services.md).
+3. `gh secret set INFRA_REPO_TOKEN`; pacotes GHCR **públicos** ou `imagePullSecret`.
+4. Push na `main` do projeto → CI bumpa SHA no `kustomization.yaml` do infra.
+5. Aguardar sync do Argo na revision do bump (se operação antiga travar, termine no UI do ArgoCD).
+6. Job de migration (`PreSync`) → Deployments api/web → Ingress só no **web** (API ClusterIP interno).
+7. `hinfra deploy status` e `curl` no host.
+
+| Sintoma | Causa comum | Correção |
+| --- | --- | --- |
+| CI: `lstat docker: no such file` | `file` relativo ao `context` | `file` na raiz do repo (ex. `backend/docker/Dockerfile`) |
+| `kubeseal`: controller not found | defaults antigos do CLI | `--controller-name=sealed-secrets --controller-namespace=kube-system` |
+| Application novo não aparece | `root-app` não refrescou | `hinfra argocd refresh --root` |
+| Sync preso / `:latest` no cluster | operação antiga + manifesto base | terminar op; sync na revision do CI |
+| `ImagePullBackOff` 403 | GHCR privado | tornar pacote público ou `imagePullSecret` |
+| API não fica Healthy | probes antes da migration | migration `PreSync`; probes leves até DB pronto |
 
 ## Onboarding de um projeto novo
 

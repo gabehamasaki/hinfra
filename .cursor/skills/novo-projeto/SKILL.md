@@ -21,21 +21,25 @@ O CI **escreve no Git, nunca no cluster**. Não existe credencial de cluster no 
 Não há webhook: o ArgoCD só existe dentro da tailnet e o GitHub não a alcança. Até ~3 min de espera é esperado. Para ver na hora:
 
 ```bash
+hinfra argocd refresh --root
+# equivalente manual:
 kubectl annotate application root-app -n argocd argocd.argoproj.io/refresh=hard --overwrite
 ```
 
 ## `hinfra` (preferido)
 
-No repo do projeto, rode `hinfra init` para gerar `hinfra.yml`, workflow e manifestos no infra com preview.
+No repo do projeto, rode `hinfra init` (pergunta single vs monorepo api+web, layout `api/web` ou `backend/frontend`).
 
-Com MCP instalado (`hinfra mcp install`, ver [`docs/12-mcp.md`](../../../docs/12-mcp.md)), use as ferramentas em vez de copiar arquivos manualmente:
+Com MCP instalado (`hinfra mcp install`, ver [`docs/12-mcp.md`](../../../docs/12-mcp.md)), use as ferramentas em vez de copiar arquivos manualmente. Se o agent estiver aberto no repo **infra**, passe `projectDir` com o caminho absoluto do projeto.
 
 | Passo | Ferramenta MCP |
 | --- | --- |
-| 1 + 2 — manifestos + Application | `scaffold_app` (`write: false` para preview, `write: true` para gravar) |
-| 4 — workflow + `hinfra.yml` | `scaffold_workflow` |
-| 5 — secret do CI | **não** — o MCP imprime o comando `gh secret set`; configure manualmente |
-| Verificação | `deploy_status` (4 elos do deploy) |
+| 1 + 2 — manifestos + Application | `scaffold_app` (`monorepo: true` para api+web; `write: false` preview) |
+| Registrar Application no Argo | `argocd_refresh` com `root: true` após gravar manifestos |
+| 4 — workflow + `hinfra.yml` | `scaffold_workflow` (`monorepo: true` se ainda não houver `images:` no hinfra.yml) |
+| SealedSecret de projeto | `seal_secret` ou `hinfra seal secret` |
+| 5 — secret do CI | **não** — o MCP imprime `gh secret set`; configure manualmente |
+| Verificação | `deploy_status` (4 elos; step 3 pode ser transitório pós-sync) |
 
 ## Checklist
 
@@ -43,7 +47,7 @@ O fluxo atravessa dois repositórios. Faltar um passo tipicamente se manifesta c
 
 ### No repositório `infra`
 
-**1. Manifestos** em `apps/<projeto>/` — use `scaffold_app` ou copie `apps/my-portfolio/` como base: `deployment.yaml`, `service.yaml`, `ingress.yaml`, `kustomization.yaml`.
+**1. Manifestos** em `apps/<projeto>/` — `scaffold_app --monorepo` gera api/web, Ingress só no web, migration PreSync e stub de sealed secret; single-image continua com `deployment.yaml` + `service.yaml` + `ingress.yaml`.
 
 O `kustomization.yaml` é o arquivo que o CI edita, então o bloco `images` precisa existir:
 
@@ -65,9 +69,9 @@ Defina `requests`/`limits` no deployment — CPU é o recurso escasso nesta máq
 
 **3. Dockerfile.** Para build estático, multi-stage terminando em nginx. Confira que o estágio de build copia **todos** os arquivos de configuração da raiz antes do install — um `pnpm-workspace.yaml` ou similar esquecido quebra o build só no CI, nunca localmente.
 
-**4. Workflow + `hinfra.yml`** — use `scaffold_workflow` (gera `.github/workflows/deploy.yml` e `hinfra.yml` automaticamente). O MCP escolhe o template single ou monorepo conforme o `hinfra.yml`.
+**4. Workflow + `hinfra.yml`** — `scaffold_workflow` ou `hinfra init`. Monorepo: bloco `images` e opcional `buildContexts` (paths Docker na raiz do repo — ver [`docs/09-cicd.md`](../../../docs/09-cicd.md)).
 
-Para monorepos (api + web), crie `hinfra.yml` na raiz do projeto:
+Para monorepos (api + web), `hinfra.yml` típico:
 
 ```yaml
 app: <projeto>
@@ -78,12 +82,15 @@ namespace: <projeto>
 images:
   api: gabehamasaki/<projeto>-api
   web: gabehamasaki/<projeto>-web
+buildContexts:
+  api: { context: ./backend, file: backend/docker/Dockerfile }
+  web: { context: ./frontend, file: frontend/Dockerfile }
 routing:
   apiPath: /api
   webPath: /
 ```
 
-O `kustomization.yaml` no repo infra deve listar **todas** as imagens. Dockerfiles em `api/` e `web/`. Templates manuais: [`docs/deploy-workflow-template.yml`](../../../docs/deploy-workflow-template.yml) (single) ou [`docs/deploy-workflow-monorepo-template.yml`](../../../docs/deploy-workflow-monorepo-template.yml) (monorepo).
+**Primeiro deploy monorepo com DB:** root-app refresh → Postgres role/DB ([`08-data-services.md`](../../../docs/08-data-services.md)) → sealed secret → CI com SHA → sync Argo → migration PreSync. Tabela de falhas em [`09-cicd.md`](../../../docs/09-cicd.md).
 
 **5. Secret do CI:**
 

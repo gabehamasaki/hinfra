@@ -48,10 +48,10 @@ hinfra health [--app]
 hinfra logs [--app] [--pod] [--tail 100] [--previous]
 hinfra docs search targetRevision
 hinfra restart [--app]
-hinfra argocd refresh [--app]
-hinfra rollback [--app] --confirm
-hinfra scaffold app --name my-app --host my-app.hamasakis.dev [--write]
-hinfra scaffold workflow [--app] [--write]
+hinfra argocd refresh [--app] [--root]
+hinfra seal secret -f secret.yaml [-o apps/<app>/sealed-secret.yaml] [--execute]
+hinfra scaffold app --name my-app --host my-app.hamasakis.dev [--monorepo] [--write]
+hinfra scaffold workflow [--app] [--monorepo] [--write]
 ```
 
 Flag global `--json` em todos os comandos.
@@ -71,11 +71,13 @@ Entrada comum: `command: hinfra`, `args: ["mcp"]`.
 
 ## Descoberta de contexto
 
-Com o cwd num repo de projeto:
+Com o cwd num repo de projeto (ou `projectDir` no MCP quando o agent está no repo `infra`):
 
 1. `hinfra.yml` na raiz (opcional)
 2. `remote origin` → `owner/repo`
 3. Validação com `apps/<app>/kustomization.yaml` no repo infra
+
+Parâmetro MCP **`projectDir`**: caminho absoluto do repo do projeto em `deploy_status`, `app_health`, `scaffold_workflow`, etc.
 
 ### `hinfra.yml`
 
@@ -88,9 +90,9 @@ host: hamasakis.dev
 exposure: public
 ```
 
-Monorepo (api + web): ver skill `novo-projeto`. `hinfra init` gera este arquivo.
+Monorepo (api + web): `hinfra init` pergunta layout e gera `images` + `buildContexts`. Manifestos no infra: `scaffold_app` com `monorepo: true` (Ingress só web; API interna; migration PreSync).
 
-## Ferramentas MCP (9)
+## Ferramentas MCP (10)
 
 | Ferramenta | Tipo |
 | --- | --- |
@@ -99,10 +101,11 @@ Monorepo (api + web): ver skill `novo-projeto`. `hinfra init` gera este arquivo.
 | `app_logs` | leitura |
 | `infra_docs` | leitura |
 | `app_restart` | mutação |
-| `argocd_refresh` | mutação |
+| `argocd_refresh` | mutação (`root: true` → root-app) |
 | `rollback` | mutação (`confirm: true`) |
-| `scaffold_app` | scaffold |
-| `scaffold_workflow` | scaffold |
+| `scaffold_app` | scaffold (`monorepo: true`) |
+| `scaffold_workflow` | scaffold (`monorepo: true`) |
+| `seal_secret` | scaffold / kubeseal (`execute: true`) |
 
 ## TUI
 

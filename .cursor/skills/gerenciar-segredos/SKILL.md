@@ -76,8 +76,15 @@ O `no_log: true` evita que o valor apareça na saída do playbook.
 ## Sealed Secrets
 
 ```bash
-kubeseal --format yaml < meu-secret.yaml > apps/<projeto>/sealed-secret.yaml
+export KUBECONFIG=.secrets/vps-1.kubeconfig
+kubeseal \
+  --controller-name=sealed-secrets \
+  --controller-namespace=kube-system \
+  --namespace <projeto> \
+  --format yaml < meu-secret.yaml > apps/<projeto>/sealed-secret.yaml
 ```
+
+Ou `hinfra seal secret -f meu-secret.yaml --execute` (mesmos defaults).
 
 O arquivo gerado é seguro em repositório — só o controller daquele cluster decifra.
 

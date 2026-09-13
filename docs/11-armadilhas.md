@@ -381,6 +381,22 @@ ipconfig /flushdns             # Windows
 
 ---
 
+## Onboarding monorepo / CI / Argo (hinfra)
+
+Problemas recorrentes ao subir projetos api+web — detalhes e ordem de deploy em [09 - CI/CD](09-cicd.md).
+
+| Sintoma | Causa | Correção |
+| --- | --- | --- |
+| CI `lstat docker: no such file` | `file` do build-push relativo ao `context` | `file` na raiz do repo (`backend/docker/Dockerfile`) |
+| `kubeseal`: `sealed-secrets-controller` not found | controller neste cluster chama-se `sealed-secrets` em `kube-system` | flags `--controller-name` / `--controller-namespace` ou `hinfra seal secret` |
+| `-app.yaml` no Git, app não no Argo | `root-app` não sincronizou o diretório | `hinfra argocd refresh --root` |
+| Sync `Running` / pods com `:latest` | operação antiga + manifesto base | terminar op; sync na revision do commit do CI |
+| `ImagePullBackOff` 403 | GHCR nasce privado | Package settings → public ou `imagePullSecret` |
+| API `Progressing` / probes 500 | migration depois dos probes | Job `PreSync`; probes leves até DB migrado |
+| MCP `cwd não está em um repositório git` | agent aberto no repo `infra` | `projectDir` absoluto do projeto nas tools MCP |
+
+---
+
 ## Padrões que se repetem
 
 Olhando o conjunto, quatro categorias explicam quase tudo:

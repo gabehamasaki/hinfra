@@ -72,13 +72,13 @@ No repo de um projeto: `hinfra init` ou MCP tools (`deploy_status`, `app_health`
 
 ## Registrar um projeto novo
 
-Prefira `hinfra init` no repo do projeto. Com MCP: `scaffold_app` e `scaffold_workflow` (ver [`docs/12-mcp.md`](docs/12-mcp.md)). Manualmente:
+Prefira `hinfra init` no repo do projeto (single ou monorepo api+web). Com MCP: `scaffold_app --monorepo`, `scaffold_workflow`, `argocd refresh --root` (ver [`docs/12-mcp.md`](docs/12-mcp.md)). Manualmente:
 
 1. Criar `apps/<projeto>/` com `deployment.yaml`, `service.yaml`, `ingress.yaml`, `kustomization.yaml` (copiar de `apps/my-portfolio/` como referência).
 2. Criar `clusters/production/apps/<projeto>-app.yaml` (Application do ArgoCD apontando pra `apps/<projeto>`).
 3. No repo do projeto:
    - **Single image:** copiar `docs/deploy-workflow-template.yml` para `.github/workflows/deploy.yml`, ajustando `IMAGE_NAME`/`APP_PATH`.
-   - **Monorepo (api + web):** copiar `docs/deploy-workflow-monorepo-template.yml`, ajustar `IMAGE_API`/`IMAGE_WEB`/`APP_PATH`, e criar `hinfra.yml` com bloco `images` (ver `docs/12-mcp.md`).
+   - **Monorepo (api + web):** `hinfra init` ou `buildContexts` + `images` no `hinfra.yml`; manifestos via `scaffold app --monorepo` (referência [`apps/schedule-visits/`](apps/schedule-visits/)).
 4. Configurar no repo do projeto o secret `INFRA_REPO_TOKEN` (PAT fine-grained, restrito a este repo `infra`, permissão Contents: Read/Write).
 5. Se o pacote do GHCR for privado, criar um `imagePullSecret` no namespace do projeto (documentar no `deployment.yaml`).
 6. Commitar e dar push — o ArgoCD sincroniza por polling (~3min) automaticamente.

@@ -78,8 +78,15 @@ Para o caso que os dois anteriores não cobrem: um segredo que precisa estar **n
 O `kubeseal` criptografa localmente com a chave pública do cluster, e só o controller lá dentro consegue abrir. O arquivo resultante é seguro em repositório público.
 
 ```bash
-kubeseal --format yaml < meu-secret.yaml > apps/<projeto>/sealed-secret.yaml
+export KUBECONFIG=.secrets/vps-1.kubeconfig
+kubeseal \
+  --controller-name=sealed-secrets \
+  --controller-namespace=kube-system \
+  --namespace <projeto> \
+  --format yaml < meu-secret.yaml > apps/<projeto>/sealed-secret.yaml
 ```
+
+Ou use `hinfra seal secret -f meu-secret.yaml --execute` (mesmas flags por padrão).
 
 | | |
 | --- | --- |
