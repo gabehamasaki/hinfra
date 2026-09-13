@@ -147,6 +147,7 @@ metadata:
     app: {{ .Name }}-api
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: {{ .Name }}-api
@@ -191,6 +192,7 @@ metadata:
     app: {{ .Name }}-web
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: {{ .Name }}-web

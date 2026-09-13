@@ -225,6 +225,7 @@ metadata:
     app: {{ .Name }}
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: {{ .Name }}
