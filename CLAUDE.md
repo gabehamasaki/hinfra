@@ -1,6 +1,6 @@
-# infra
+# hinfra
 
-Provisionamento (Ansible) + GitOps (ArgoCD) de um cluster k3s numa VPS única, hospedando `hamasakis.cloud` (plataforma) e `hamasakis.dev` (projetos).
+Kit público de provisionamento (Ansible) + GitOps (ArgoCD) para k3s. Workloads de produção ficam no repo privado `hinfra-workloads`.
 
 Documentação completa em [`docs/`](docs/) — **é a fonte de verdade**. Este arquivo e as skills apontam para lá em vez de repetir conteúdo, para não existirem duas versões que divergem.
 
@@ -23,11 +23,11 @@ Ao adicionar algo novo, a primeira pergunta é sempre: **isso muda com que frequ
 
 Violar qualquer um destes causa dano difícil ou impossível de reverter:
 
-- **Nunca commitar `vault.yml` em texto puro.** Fluxo: `ansible-vault encrypt` e só então `git add -f`. Segredo que entra no histórico do Git fica recuperável para sempre, mesmo removido depois.
-- **Nunca expor console administrativo publicamente.** ArgoCD e RustFS são alcançáveis só pela tailnet, via middleware do Traefik. O DNS deles aponta para o IP Tailscale (`100.86.241.1`), que não é roteável fora dela.
+- **Nunca commitar `vault.yml`.** Mantenha só local (criptografado com ansible-vault). Use `vault.yml.example` como modelo.
+- **Nunca expor console administrativo publicamente.** ArgoCD e RustFS são alcançáveis só pela tailnet, via middleware do Traefik. O DNS deles aponta para o IP Tailscale (`<TAILNET_IP>`), que não é roteável fora dela.
 - **Sempre fixar `targetRevision`** em Application com fonte Helm. `"*"` trava o Application em `Unknown` sem mensagem de erro.
 - **`.secrets/` nunca vai para o Git.** Contém chave SSH, kubeconfig e a master key do Sealed Secrets.
-- **`git pull --rebase` antes de push.** O CI dos projetos commita neste repo (bump de tag de imagem), então o remoto anda sozinho.
+- **`git pull --rebase` antes de push.** O CI dos projetos commita no repo `hinfra-workloads` (bump de tag de imagem).
 
 ## Acesso
 
