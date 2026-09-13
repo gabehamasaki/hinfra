@@ -33,9 +33,23 @@
     --hostname={{ tailscale_hostname }}
     --advertise-tags={{ tailscale_tags }}
     --ssh=false
+    --snat-subnet-routes=false
   when: >
     tailscale_status_raw.rc != 0
     or (tailscale_status_raw.stdout | from_json).BackendState != "Running"
+
+# Task separada porque o `tailscale up` acima só roda em node novo — num node já na
+# tailnet ele é pulado, e a preferência continuaria com o default.
+#
+# Por que desligar o SNAT: com ele ligado, o tailscaled marca o pacote que entra pela
+# tailnet e o `ts-postrouting` o mascara na saída para a rede de pods. O Traefik passa a
+# ver o endereço da bridge cni0 (10.42.0.1) como origem, o `IPAllowList` não casa com
+# 100.64.0.0/10 e TODOS os consoles respondem 403 — inclusive de dentro da tailnet.
+# Não há subnet route anunciada aqui (`--advertise-routes` não é usado), então o SNAT não
+# serve a nenhum propósito nesta topologia. Ver docs/11-armadilhas.md.
+- name: Desligar o SNAT do Tailscale (senão o IPAllowList dos consoles quebra)
+  ansible.builtin.command: tailscale set --snat-subnet-routes=false
+  changed_when: false
 
 - name: Obter IP tailscale deste host
   ansible.builtin.command: tailscale ip -4
