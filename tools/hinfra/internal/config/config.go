@@ -9,14 +9,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	DefaultTailnetAPI = "<TAILNET_IP>:6443"
-	KubeconfigName    = "vps-1.kubeconfig"
-)
+const KubeconfigName = "vps-1.kubeconfig"
 
 type Config struct {
 	InfraRepo     string `yaml:"infraRepo"`
 	WorkloadsRepo string `yaml:"workloadsRepo"`
+	TailnetAPI    string `yaml:"tailnetAPI"` // opcional; default = server do kubeconfig
 }
 
 type Runtime struct {
@@ -80,11 +78,17 @@ func Load() (*Runtime, error) {
 		}
 	}
 
+	kubeconfig := filepath.Join(infraRepo, ".secrets", KubeconfigName)
+	tailnetAPI, err := TailnetAPIAddr(kubeconfig, cfg.TailnetAPI)
+	if err != nil {
+		return nil, fmt.Errorf("config em %s: %w", path, err)
+	}
+
 	return &Runtime{
 		InfraRepo:     infraRepo,
 		WorkloadsRepo: workloadsRepo,
-		Kubeconfig:    filepath.Join(infraRepo, ".secrets", KubeconfigName),
-		TailnetAPI:    DefaultTailnetAPI,
+		Kubeconfig:    kubeconfig,
+		TailnetAPI:    tailnetAPI,
 	}, nil
 }
 

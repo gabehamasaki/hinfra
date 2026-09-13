@@ -94,6 +94,13 @@ func newDoctorCmd() *cobra.Command {
 		if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".config", "infra-mcp", "config.yaml")); err == nil {
 			fmt.Println("aviso: migre ~/.config/infra-mcp/config.yaml para ~/.config/hinfra/config.yaml")
 		}
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel2()
+		if warns, err := actions.GitOpsWarnings(ctx2, env); err == nil {
+			if msg := actions.FormatGitOpsWarnings(warns); msg != "" {
+				fmt.Println(msg)
+			}
+		}
 		fmt.Println("doctor ok")
 		},
 	}
