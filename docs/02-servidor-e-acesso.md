@@ -4,13 +4,13 @@
 
 | | |
 | --- | --- |
-| Provedor | Hostinger, plano KVM 2 |
+| Provedor | Hostinger, plano KVM 4 (upgrade de KVM 2 em 2026-11) |
 | ID da VM (API Hostinger) | `<hostinger-vm-id>` |
 | Hostname | `<node-hostname>` |
 | IP público | `<VPS_PUBLIC_IP>` |
 | IP na tailnet | `<TAILNET_IP>` |
 | SO | Ubuntu 24.04.4 LTS (kernel 6.8.0) |
-| CPU / RAM / Disco | 2 vCPU · 8 GB · 96 GB |
+| CPU / RAM / Disco | 4 vCPU · 16 GB · 200 GB |
 
 O hostname real (`<node-hostname>`) é o nome com que o node se registra no Kubernetes. O inventário do Ansible chama a mesma máquina de `vps-1` — são coisas diferentes, e confundir as duas já custou um playbook quebrado (ver [11 - Armadilhas](11-armadilhas.md)).
 
@@ -148,7 +148,7 @@ Os dois domínios são registrados na Hostinger, mas o DNS autoritativo é o **C
 | `grafana.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 | `s3.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 
-Os hosts públicos são **proxied** (nuvem laranja): o IP da VPS deixa de aparecer no DNS e o tráfego passa pelo WAF, pelo rate limit e pela mitigação de DDoS da Cloudflare. Num node de 2 vCPU isso não é conforto, é a única defesa que funciona — rejeitar um flood localmente ainda gastaria CPU da própria VPS.
+Os hosts públicos são **proxied** (nuvem laranja): o IP da VPS deixa de aparecer no DNS e o tráfego passa pelo WAF, pelo rate limit e pela mitigação de DDoS da Cloudflare. Num node pequeno (2 vCPU na origem, 4 hoje) isso não é conforto, é a única defesa que funciona — rejeitar um flood localmente ainda gastaria CPU da própria VPS.
 
 Os hosts da tailnet **não podem** ser proxied: a Cloudflare não aceita um IP `100.64.0.0/10` como origem. Continuam em "DNS only", protegidos por não serem roteáveis.
 

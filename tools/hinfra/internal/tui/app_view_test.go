@@ -12,7 +12,7 @@ import (
 	"github.com/gabehamasaki/hinfra/tools/hinfra/internal/tui/store"
 )
 
-// nodeFixture reproduz a VPS real: 2 vCPU, 8 GiB, disco de 96 GiB.
+// nodeFixture reproduz a VPS real: 4 vCPU, 16 GiB, disco de 193 GiB (KVM 4).
 func nodeFixture() actions.NodeStat {
 	return actions.NodeStat{
 		Name:              "srv1957194",
@@ -20,15 +20,15 @@ func nodeFixture() actions.NodeStat {
 		Roles:             "control-plane",
 		KubeletVersion:    "v1.36.4+k3s1",
 		OSImage:           "Ubuntu 24.04",
-		CPUCapacityMilli:  2000,
-		CPUAllocMilli:     2000,
+		CPUCapacityMilli:  4000,
+		CPUAllocMilli:     4000,
 		CPUUsageMilli:     196,
-		CPURequestsMilli:  820,
-		MemCapacityBytes:  8326631424,
-		MemAllocBytes:     8326631424,
+		CPURequestsMilli:  1250,
+		MemCapacityBytes:  16769028096,
+		MemAllocBytes:     16769028096,
 		MemUsageBytes:     3150176256,
 		MemRequestsBytes:  2147483648,
-		DiskCapacityBytes: 102888095744,
+		DiskCapacityBytes: 206900281344,
 		DiskUsedBytes:     7535067136,
 		ImageFSUsedBytes:  3760676864,
 		NetRxBytes:        48000000000,
@@ -84,8 +84,8 @@ func TestDashboardMostraTodosOsPaineisDeRecurso(t *testing.T) {
 
 func TestDashboardMostraNumerosDeCapacidade(t *testing.T) {
 	out := stripANSI(dashboardModel(120, 44).View())
-	// 196m de 2000m = 10%; 3.0GiB de 7.76GiB = 38%
-	for _, want := range []string{"196m", "10%", "38%", "7.02GiB"} {
+	// 196m de 4000m = 5%; 2.93GiB de 15.62GiB = 19%
+	for _, want := range []string{"196m", "5%", "19%", "7.02GiB"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("dashboard não mostra %q\n---\n%s", want, out)
 		}
@@ -97,9 +97,9 @@ func TestDashboardMostraRequestsSeparadoDoUso(t *testing.T) {
 	if !strings.Contains(out, "requests") {
 		t.Error("dashboard deveria distinguir uso real de requests reservados")
 	}
-	// 820m de 2000m alocáveis = 41%
-	if !strings.Contains(out, "41%") {
-		t.Errorf("esperava 41%% de requests de CPU\n---\n%s", out)
+	// 1250m de 4000m alocáveis = 31%
+	if !strings.Contains(out, "31%") {
+		t.Errorf("esperava 31%% de requests de CPU\n---\n%s", out)
 	}
 }
 

@@ -28,6 +28,7 @@ Violar qualquer um destes causa dano difícil ou impossível de reverter:
 - **Sempre fixar `targetRevision`** em Application com fonte Helm. `"*"` trava o Application em `Unknown` sem mensagem de erro.
 - **`.secrets/` nunca vai para o Git.** Contém chave SSH, kubeconfig e a master key do Sealed Secrets.
 - **`git pull --rebase` antes de push.** O CI dos projetos commita no repo `hinfra-workloads` (bump de tag de imagem).
+- **Nunca `git push --force` ou `git push -f`.** Também bloqueado em `.claude/settings.json`.
 
 ## Acesso
 
@@ -45,7 +46,7 @@ cd ansible && script -qec "ansible-playbook -i inventory/hosts.ini site.yml \
 
 ## Restrição de recursos
 
-2 vCPU / 8 GB, node único. Memória tem folga; **CPU é o limite real** — já há ~41% do orçamento de requests comprometido. Toda adição ao cluster precisa de `requests`/`limits` explícitos, e qualquer coisa que peça mais que ~200m de CPU merece justificativa (foi por isso que Kafka ficou de fora e Prometheus segue adiado).
+4 vCPU / 16 GB (KVM 4), node único. Memória tem folga; **CPU segue sendo o limite real** — ~1250m de requests em 4000m (~31%) comprometidos. Toda adição ao cluster precisa de `requests`/`limits` explícitos, e qualquer coisa que peça mais que ~200m de CPU merece justificativa (foi por isso que Kafka ficou de fora e Prometheus segue adiado).
 
 ## Verificar antes de afirmar
 

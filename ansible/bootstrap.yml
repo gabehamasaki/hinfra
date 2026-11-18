@@ -4,7 +4,7 @@
 #
 # Cria o usuário `deploy` com sudo e uma chave SSH dedicada, valida que ele funciona,
 # e só então fecha o login root via SSH. Ver README para o procedimento completo
-# (incluindo o gate manual de validação antes do hardening final).
+#(incluindo o gate manual de validação antes do hardening final).
 
 - name: Bootstrap - cria usuário deploy
   hosts: all
@@ -75,15 +75,15 @@
     - name: Desabilitar PermitRootLogin
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
-        regexp: '^#?PermitRootLogin'
-        line: 'PermitRootLogin no'
+        regexp: "^#?PermitRootLogin"
+        line: "PermitRootLogin no"
       notify: restart sshd
 
     - name: Desabilitar PasswordAuthentication
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
-        regexp: '^#?PasswordAuthentication'
-        line: 'PasswordAuthentication no'
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication no"
       notify: restart sshd
 
   handlers:
