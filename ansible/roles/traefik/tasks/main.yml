@@ -12,6 +12,7 @@
   loop:
     - { src: middlewares.yaml.j2, dest: traefik-middlewares.yaml }
     - { src: helmchartconfig.yaml.j2, dest: traefik-helmchartconfig.yaml }
+    - { src: api-gateway.yaml.j2, dest: traefik-api-gateway.yaml }
 
 # Antes do HelmChartConfig: ele referencia o security-headers na lista de middlewares
 # do entrypoint websecure. Middleware referenciado que não existe faz o Traefik
@@ -40,6 +41,26 @@
     traefik_deployment.resources | length > 0
     and traefik_deployment.resources[0].spec.template.spec.containers[0].args
         | select('search', 'forwardedHeaders.trustedIPs') | list | length > 0
+  retries: 30
+  delay: 10
+
+- name: Aplicar o certificado e o TLSStore default do gateway de APIs
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/traefik-api-gateway.yaml
+
+- name: Esperar o certificado do gateway de APIs ficar Ready
+  kubernetes.core.k8s_info:
+    api_version: cert-manager.io/v1
+    kind: Certificate
+    name: api-gateway
+    namespace: kube-system
+  register: api_gateway_certificate
+  until: >-
+    api_gateway_certificate.resources | length > 0
+    and (api_gateway_certificate.resources[0].status.conditions | default([])
+         | selectattr('type', 'equalto', 'Ready')
+         | selectattr('status', 'equalto', 'True') | list | length > 0)
   retries: 30
   delay: 10
 

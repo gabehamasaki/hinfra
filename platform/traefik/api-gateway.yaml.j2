@@ -1,0 +1,30 @@
+---
+# Certificado único do host do gateway de APIs (api.<infra_domain>). Vários serviços, em
+# namespaces diferentes, compartilham este host e se separam por prefixo de path. Se cada
+# Ingress pedisse o próprio certificado, o cert-manager emitiria o mesmo hostname várias
+# vezes e queimaria o rate limit do Let's Encrypt. Por isso o certificado vive aqui, na
+# plataforma, e os Ingress dos serviços não declaram secretName.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-gateway
+  namespace: kube-system
+spec:
+  secretName: api-gateway-tls
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - "api.{{ infra_domain }}"
+---
+# O TLSStore `default` é o certificado que o Traefik usa quando o Ingress tem bloco `tls`
+# sem secretName. Ingress que já têm secret próprio (ex.: grafana-tls) continuam
+# casando por SNI e não são afetados.
+apiVersion: traefik.io/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  namespace: kube-system
+spec:
+  defaultCertificate:
+    secretName: api-gateway-tls
