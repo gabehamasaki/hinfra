@@ -159,14 +159,15 @@ Os hosts da Vercel também ficam em "DNS only", com os IPs que a própria Vercel
 
 **Bot Fight Mode fica desligado na zona `<infra_domain>`.** O rewrite da Vercel chama o gateway a partir dos servidores dela, e o Bot Fight Mode desafia tráfego automatizado de datacenter: o resultado é um `403` com a página "Just a moment...", que nenhum servidor resolve. No plano Free ele não pode ser contornado por regra de skip do WAF, só desligado. Como o único host proxied dessa zona é o `api.`, o efeito fica restrito a ele.
 
-Configuração da zona dos apps, junto com o proxy:
+Configuração de borda das duas zonas. O que protege tráfego de verdade é a da `<infra_domain>`, porque é nela que fica o único host público proxied (`api.`); a da `<apps_domain>` foi feita quando os projetos ainda rodavam na VPS e hoje só vale para algum host proxied que venha a existir lá.
 
-| Ajuste | Valor | Por quê |
-| --- | --- | --- |
-| SSL/TLS | **Full (strict)** | Com `Flexible` a Cloudflare fala HTTP com a origem; qualquer redirect HTTP→HTTPS na origem viraria loop infinito |
-| Always Use HTTPS | On | Redirect 301 feito na borda |
-| WAF Managed Free Ruleset | Implantado | Existir na zona não basta: sem uma regra `execute` na fase `http_request_firewall_managed`, o ruleset não é executado |
-| Rate limiting | 100 req / 10s por IP | O plano Free só permite período de 10s (a API recusa 60s com `not entitled to use the period 60`) |
+| Ajuste | `<infra_domain>` | `<apps_domain>` | Por quê |
+| --- | --- | --- | --- |
+| SSL/TLS | **Full (strict)** | **Full (strict)** | Com `Flexible` a Cloudflare fala HTTP com a origem; com `Full` ela aceita qualquer certificado. A origem tem certificado Let's Encrypt válido, então `strict` não custa nada |
+| Always Use HTTPS | On | On | Redirect 301 feito na borda |
+| WAF Managed Free Ruleset | Implantado | Implantado | Existir na zona não basta: sem uma regra `execute` na fase `http_request_firewall_managed`, o ruleset não é executado |
+| Rate limiting | **Não** | 100 req / 10s por IP | No gateway, as chamadas dos frontends chegam pelos IPs da Vercel (rewrite) e dividiriam o mesmo contador. O limite fica no `public-rate-limit` do Traefik, mais folgado. O plano Free só permite período de 10s |
+| Bot Fight Mode | **Off** | On | Desafia o rewrite da Vercel — ver acima |
 
 Os registros de e-mail de `<apps_domain>` (MX, SPF, DKIM, DMARC, apontando para o Hostinger Mail) **não foram tocados** e não devem ser.
 
