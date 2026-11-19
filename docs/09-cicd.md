@@ -104,13 +104,13 @@ environments:
 
 Com `enabled: false` em dev/homolog, tags `dev/*` e `hg/*` falham no CI até existir overlay + Application no infra (`scaffold_app` com `environments` habilitados).
 
-### Monorepo (api + web)
+### Monorepo (api + frontend)
 
-Mesma convenção de tags; duas imagens com o **mesmo** `newTag`. Ver [`deploy-workflow-monorepo-template.yml`](deploy-workflow-monorepo-template.yml) e `buildContexts` em `hinfra.yml` ([seção anterior neste doc](09-cicd.md)).
+Só a **API** vai para o cluster; o frontend vai para a Vercel ([seção abaixo](#frontends-na-vercel)). A mesma tag `v*` dispara os dois workflows do repo do projeto: `deploy.yml` (imagem da API + bump no `kustomization.yaml`) e `vercel-deploy.yml` (frontend). Referência viva: o `schedule-visits`.
 
-O `kustomization.yaml` no repo infra precisa listar **todas** as imagens que o CI atualiza.
+O `kustomization.yaml` no repo infra precisa listar **todas** as imagens que o CI atualiza — hoje, só a da API.
 
-O `scaffold_workflow` do MCP escolhe o template certo quando `hinfra.yml` tem bloco `images`, ou com `monorepo: true`. O `deploy_status` exige que cada imagem esteja rodando com a versão do manifesto.
+> **Débito conhecido:** o `scaffold_app --monorepo`, o `scaffold_workflow`, o [`deploy-workflow-monorepo-template.yml`](deploy-workflow-monorepo-template.yml) e o `deploy_status` ainda assumem duas imagens (api + web) com Ingress no web. Até serem atualizados, remova do resultado o `web-deployment`, o `web-service`, o Ingress do web e a imagem `-web`, e crie o Ingress do gateway descrito em [06 - TLS e Ingress](06-tls-e-ingress.md#gateway-de-apis-apiinfra_domain).
 
 ### Primeiro deploy (monorepo com DB)
 
@@ -121,8 +121,36 @@ Ordem que evita sync preso e probes falhando antes da migration:
 3. `gh secret set HINFRA_WORKLOADS_TOKEN`; pacotes GHCR públicos ou `imagePullSecret`.
 4. Tag `v*` na `main` do projeto → CI bumpa versão no `kustomization.yaml` do infra.
 5. Aguardar sync do Argo.
-6. Job de migration (`PreSync`) → Deployments api/web → Ingress no **web**.
-7. `hinfra deploy status` e `curl` no host.
+6. Job de migration → Deployment da API → Ingress do gateway (`api.<infra_domain>/<projeto>`).
+7. `curl https://api.<infra_domain>/<projeto>/<rota>` e, com o frontend publicado, a mesma rota via `https://<projeto>.<apps_domain>/api/...`.
+
+## Frontends na Vercel
+
+Frontend não roda no cluster. Ele é publicado pela Vercel, e **só por tag `v*` na `main`** — o mesmo gatilho dos backends, para que "versão" signifique a mesma coisa nos dois lados.
+
+**No repo do projeto:**
+
+- `vercel.json` na pasta do frontend, com o deploy automático por push desligado:
+
+  ```json
+  {
+    "git": { "deploymentEnabled": false },
+    "rewrites": [
+      { "source": "/api/:path*", "destination": "https://api.<infra_domain>/<projeto>/:path*" },
+      { "source": "/(.*)", "destination": "/index.html" }
+    ]
+  }
+  ```
+
+  O primeiro rewrite mantém o navegador na mesma origem (sem CORS, e o front continua chamando `/api/...`). O segundo é o fallback de SPA — só é necessário com roteamento no cliente (`BrowserRouter`); site estático sem router dispensa os dois.
+- `.github/workflows/vercel-deploy.yml`: em push de tag `v*`, falha se o commit da tag não for ancestral de `origin/main`, depois `vercel pull --environment=production` → `vercel build --prod` → `vercel deploy --prebuilt --prod`. O `--prebuilt` publica exatamente o código da tag; um Deploy Hook buildaria a ponta da `main`.
+- Secrets: `VERCEL_TOKEN` (criado no painel, em Account Settings → Tokens — a CLI recusa criar token com a sessão de login dela), `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID`.
+
+**Na Vercel:** projeto ligado ao repo, com *Root Directory* apontando para a pasta do frontend em monorepo. Confira o **Framework Preset**: projeto criado pela API com root directory pode nascer com `framework: null`, e sem preset a Vercel não sabe que a saída do Vite é `dist/`.
+
+**DNS:** o host do frontend em `<apps_domain>` aponta para os IPs que a Vercel recomenda, em **DNS only** — ver [02 - Servidor e acesso](02-servidor-e-acesso.md#dns).
+
+**Cutover de um frontend que já estava no cluster:** Vercel validada em `*.vercel.app` → DNS → só então remover do cluster. O alias `*.vercel.app` com hash pede login (Deployment Protection); teste pelo alias de produção do projeto.
 
 ### TUI e versão em produção
 
@@ -132,7 +160,7 @@ Ordem que evita sync preso e probes falhando antes da migration:
 
 ### 1. Manifestos no repo infra
 
-`hinfra scaffold app` ou copiar de `apps/my-portfolio`.
+`hinfra scaffold app` ou copiar de `apps/schedule-visits` (API atrás do gateway). Frontend não entra aqui — ver [Frontends na Vercel](#frontends-na-vercel).
 
 `kustomization.yaml` é o arquivo que o CI edita:
 

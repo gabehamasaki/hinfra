@@ -81,7 +81,7 @@ A porta `6443` (API do Kubernetes) **não aparece na lista** — e é esse o pon
 
 **80/443 só aceitam tráfego da Cloudflare.** É isso que impede alguém de contornar o proxy batendo direto no IP de origem: sem essa restrição, o WAF, o rate limit e o anti-DDoS da Cloudflare seriam decoração, porque a origem continuaria alcançável por quem descobrisse o IP (e um IP público é descoberto por varredura, não por DNS). A lista de ranges é versionada em `group_vars/all/vars.yml` como `cloudflare_ip_ranges_v4`/`_v6`, e o role `common` a confere contra `https://api.cloudflare.com/client/v4/ips` **e falha o playbook se divergir** — uma mudança da Cloudflare tem que aparecer como erro, não como site fora do ar para parte dos visitantes.
 
-A consequência operacional: qualquer host público novo **precisa** estar proxied na Cloudflare. Um registro em "DNS only" apontando para o IP público fica inalcançável.
+A consequência operacional: qualquer host público novo **servido pela VPS** precisa estar proxied na Cloudflare. Um registro em "DNS only" apontando para o IP público fica inalcançável. Hosts de frontend servidos pela Vercel são outra coisa: apontam para os IPs da Vercel e ficam em "DNS only" (ver [DNS](#dns)).
 
 ### `fail2ban`
 
@@ -134,23 +134,30 @@ Os dois domínios são registrados na Hostinger, mas o DNS autoritativo é o **C
 
 | Zona | Zone ID | Uso |
 | --- | --- | --- |
-| `<infra_domain>` | `<CF_ZONE_INFRA>` | Serviços de plataforma |
-| `<apps_domain>` | `<CF_ZONE_APPS>` | Projetos |
+| `<infra_domain>` | `<CF_ZONE_INFRA>` | Serviços de plataforma (tailnet) e o gateway público de APIs (`api.`) |
+| `<apps_domain>` | `<CF_ZONE_APPS>` | Frontends dos projetos (Vercel) |
+
+A divisão é por **onde o host é servido**: tudo que roda na VPS e é público fica sob `api.<infra_domain>`, com um prefixo de path por projeto; os frontends ficam em `<apps_domain>` na Vercel. Um mesmo nome não pode apontar para os dois — dois IPs no mesmo registro viram round-robin, e metade dos acessos cairia no lugar errado. Quando o frontend precisa da API na mesma origem, quem junta os dois é o rewrite da Vercel (`/api/*` → gateway), não o DNS.
 
 ### Registros que importam
 
 | Registro | Aponta para | Proxy | Alcance |
 | --- | --- | --- | --- |
-| `<apps_domain>` (apex) | `<VPS_PUBLIC_IP>` (público) | **Sim** | Internet, via Cloudflare |
-| `schedule-visits.<apps_domain>` | `<VPS_PUBLIC_IP>` (público) | **Sim** | Internet, via Cloudflare |
+| `<apps_domain>` (apex) | IPs da Vercel | Não | Internet, servido pela Vercel |
+| `schedule-visits.<apps_domain>` | IPs da Vercel | Não | Internet, servido pela Vercel |
+| `api.<infra_domain>` | `<VPS_PUBLIC_IP>` (público) | **Sim** | Internet, via Cloudflare — gateway de APIs |
 | `study.<apps_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 | `argocd.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 | `grafana.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 | `s3.<infra_domain>` | `<TAILNET_IP>` (tailnet) | Não | Só tailnet |
 
-Os hosts públicos são **proxied** (nuvem laranja): o IP da VPS deixa de aparecer no DNS e o tráfego passa pelo WAF, pelo rate limit e pela mitigação de DDoS da Cloudflare. Num node pequeno (2 vCPU na origem, 4 hoje) isso não é conforto, é a única defesa que funciona — rejeitar um flood localmente ainda gastaria CPU da própria VPS.
+Os hosts públicos **da VPS** são **proxied** (nuvem laranja): o IP da VPS deixa de aparecer no DNS e o tráfego passa pelo WAF, pelo rate limit e pela mitigação de DDoS da Cloudflare. Num node pequeno (2 vCPU na origem, 4 hoje) isso não é conforto, é a única defesa que funciona — rejeitar um flood localmente ainda gastaria CPU da própria VPS.
 
 Os hosts da tailnet **não podem** ser proxied: a Cloudflare não aceita um IP `100.64.0.0/10` como origem. Continuam em "DNS only", protegidos por não serem roteáveis.
+
+Os hosts da Vercel também ficam em "DNS only", com os IPs que a própria Vercel recomenda para o domínio (`get_domain_config` mostra; hoje `216.198.79.1` e `64.29.17.1`). Proxiar na frente da Vercel põe duas CDNs em série e briga com a emissão de certificado dela; quem protege esses hosts é a borda da Vercel.
+
+**Bot Fight Mode fica desligado na zona `<infra_domain>`.** O rewrite da Vercel chama o gateway a partir dos servidores dela, e o Bot Fight Mode desafia tráfego automatizado de datacenter: o resultado é um `403` com a página "Just a moment...", que nenhum servidor resolve. No plano Free ele não pode ser contornado por regra de skip do WAF, só desligado. Como o único host proxied dessa zona é o `api.`, o efeito fica restrito a ele.
 
 Configuração da zona dos apps, junto com o proxy:
 

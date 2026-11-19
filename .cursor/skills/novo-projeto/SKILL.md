@@ -1,6 +1,6 @@
 ---
 name: novo-projeto
-description: Coloca um projeto novo no ar no cluster, ponta a ponta — manifestos, Application do ArgoCD, Dockerfile, workflow do GitHub Actions, secret do CI e registro DNS. Use sempre que o usuário quiser fazer deploy de um projeto, subir um app ou site novo, conectar um repositório ao cluster, ou configurar CI/CD para algo. Use mesmo quando o pedido cobrir só uma parte ("cria o workflow", "faz o deploy do X", "bota esse repo no ar"), porque o fluxo atravessa dois repositórios e faltar um passo quebra o pipeline de um jeito difícil de diagnosticar.
+description: Coloca um projeto novo no ar, ponta a ponta — backend no cluster (manifestos, Application do ArgoCD, Dockerfile, workflow, secret do CI, rota no gateway api.<infra_domain>) e frontend na Vercel (vercel.json, workflow por tag, DNS). Use sempre que o usuário quiser fazer deploy de um projeto, subir um app ou site novo, conectar um repositório ao cluster, ou configurar CI/CD para algo. Use mesmo quando o pedido cobrir só uma parte ("cria o workflow", "faz o deploy do X", "bota esse repo no ar"), porque o fluxo atravessa dois repositórios e faltar um passo quebra o pipeline de um jeito difícil de diagnosticar.
 ---
 
 # Novo projeto no cluster
@@ -27,9 +27,16 @@ hinfra argocd refresh --root
 kubectl annotate application root-app -n argocd argocd.argoproj.io/refresh=hard --overwrite
 ```
 
+## Onde cada parte roda
+
+- **Backend** (API, worker): cluster, exposto em `api.<infra_domain>/<projeto>` — ver [`docs/06-tls-e-ingress.md`](../../../docs/06-tls-e-ingress.md#gateway-de-apis-apiinfra_domain).
+- **Frontend**: Vercel, deploy só por tag `v*` na `main`, host em `<apps_domain>` com DNS only — ver [`docs/09-cicd.md`](../../../docs/09-cicd.md#frontends-na-vercel). Nada de nginx servindo estático no cluster.
+
+Projeto só de frontend não toca este repo. Projeto com API e frontend segue as duas seções.
+
 ## `hinfra` (preferido)
 
-No repo do projeto, rode `hinfra init` (pergunta single vs monorepo api+web, layout `api/web` ou `backend/frontend`).
+No repo do projeto, rode `hinfra init` (pergunta single vs monorepo api+web, layout `api/web` ou `backend/frontend`). O scaffold de monorepo ainda gera a parte web para o cluster — débito conhecido; remova-a e use a Vercel (ver abaixo).
 
 Com MCP instalado (`hinfra mcp install`, ver [`docs/12-mcp.md`](../../../docs/12-mcp.md)), use as ferramentas em vez de copiar arquivos manualmente. Se o agent estiver aberto no repo **infra**, passe `projectDir` com o caminho absoluto do projeto.
 
@@ -48,7 +55,7 @@ O fluxo atravessa dois repositórios. Faltar um passo tipicamente se manifesta c
 
 ### No repositório `infra`
 
-**1. Manifestos** em `apps/<projeto>/` — `scaffold_app --monorepo` gera api/web, Ingress só no web, migration PreSync e stub de sealed secret; single-image continua com `deployment.yaml` + `service.yaml` + `ingress.yaml`.
+**1. Manifestos** em `apps/<projeto>/` — Deployment e Service da API, migration (se houver DB), sealed secret e o **Ingress do gateway** (`api-ingress.yaml`: host `api.<infra_domain>`, path `/<projeto>`, middlewares de rate limit + strip/add prefix, `tls` **sem** `secretName`). Copie de `apps/schedule-visits` no `hinfra-workloads`. O `scaffold_app --monorepo` ainda gera `web-*` e Ingress no web: apague.
 
 O `kustomization.yaml` é o arquivo que o CI edita, então o bloco `images` precisa existir:
 
@@ -64,15 +71,15 @@ images:
 
 Defina `requests`/`limits` no deployment — CPU é o recurso escasso nesta máquina.
 
-**2. Application** em `clusters/production/apps/<projeto>-app.yaml` — incluído no `scaffold_app`, ou copie de `my-portfolio-app.yaml` com `syncPolicy.automated` (prune + selfHeal) e `CreateNamespace=true`.
+**2. Application** em `clusters/production/apps/<projeto>-app.yaml` — incluído no `scaffold_app`, ou copie de `schedule-visits-app.yaml` com `syncPolicy.automated` (prune + selfHeal) e `CreateNamespace=true`.
 
 ### No repositório do projeto
 
-**3. Dockerfile.** Para build estático, multi-stage terminando em nginx. Confira que o estágio de build copia **todos** os arquivos de configuração da raiz antes do install — um `pnpm-workspace.yaml` ou similar esquecido quebra o build só no CI, nunca localmente.
+**3. Dockerfile da API.** Confira que o estágio de build copia **todos** os arquivos de configuração da raiz antes do install — um `pnpm-workspace.yaml` ou similar esquecido quebra o build só no CI, nunca localmente.
 
 **4. Workflow + `hinfra.yml`** — `scaffold_workflow` ou `hinfra init`. Monorepo: bloco `images` e opcional `buildContexts` (paths Docker na raiz do repo — ver [`docs/09-cicd.md`](../../../docs/09-cicd.md)).
 
-Para monorepos (api + web), `hinfra.yml` típico:
+Para monorepos (API + frontend), `hinfra.yml` típico — só a API tem imagem:
 
 ```yaml
 app: <projeto>
@@ -82,13 +89,10 @@ appPath: apps/<projeto>
 namespace: <projeto>
 images:
   api: gabehamasaki/<projeto>-api
-  web: gabehamasaki/<projeto>-web
 buildContexts:
   api: { context: ./backend, file: backend/docker/Dockerfile }
-  web: { context: ./frontend, file: frontend/Dockerfile }
 routing:
   apiPath: /api
-  webPath: /
 ```
 
 **Primeiro deploy monorepo com DB:** root-app refresh → Postgres role/DB ([`08-data-services.md`](../../../docs/08-data-services.md)) → sealed secret → tag `v*` na main → sync Argo → migration PreSync. Tabela de falhas em [`09-cicd.md`](../../../docs/09-cicd.md).
@@ -103,7 +107,15 @@ PAT fine-grained restrito ao repo `infra`, permissão `Contents: Read and write`
 
 ### Fora dos repositórios
 
-**6. DNS** no Cloudflare. Projeto público aponta para `<VPS_PUBLIC_IP>`; algo administrativo aponta para `<TAILNET_IP>` (tailnet) e leva a annotation do middleware. Ver a skill `servico-no-cluster`.
+**6. DNS** no Cloudflare. A API **não** precisa de registro novo: o `api.<infra_domain>` já existe (proxied). O frontend ganha `<projeto>.<apps_domain>` apontando para os IPs da Vercel, em DNS only. Algo administrativo aponta para `<TAILNET_IP>` (tailnet) e leva a annotation do middleware — ver a skill `servico-no-cluster`.
+
+### Frontend na Vercel
+
+**8.** `vercel.json` na pasta do frontend com `git.deploymentEnabled: false`, rewrite `/api/:path*` → `https://api.<infra_domain>/<projeto>/:path*` e fallback de SPA se houver router no cliente.
+
+**9.** `.github/workflows/vercel-deploy.yml` por tag `v*` (guarda de commit na `main`; `vercel pull/build/deploy --prebuilt --prod`) e os secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+
+**10.** Projeto na Vercel com Root Directory do frontend e **Framework Preset conferido** (pode nascer `null`). Validar no alias de produção `*.vercel.app` antes do DNS.
 
 **7. Imagem privada?** Pacotes do GHCR nascem privados. Ou torne o pacote público (Package settings no GitHub), ou crie um `imagePullSecret` no namespace e referencie no deployment.
 

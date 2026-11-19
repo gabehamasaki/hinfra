@@ -482,6 +482,38 @@ Problemas recorrentes ao subir projetos api+web — detalhes e ordem de deploy e
 
 ---
 
+## Apagar um Application não apaga o que ele criou
+
+**Sintoma.** O arquivo do Application sai do Git, o `workloads-root` o poda, e o Deployment, o Service, o Ingress e o pod continuam rodando no namespace.
+
+**Causa.** Os Applications de projeto não têm o finalizer `resources-finalizer.argocd.argoproj.io`. Sem ele, apagar o Application é "parar de gerenciar", não "desinstalar". O `CreateNamespace=true` também não apaga o namespace que criou.
+
+**Correção.** Depois que o Application sumir (`kubectl get application <app> -n argocd` → `NotFound`), `kubectl delete ns <app>`. A ordem importa: com o Application ainda vivo, o `selfHeal` recria o que for apagado. Remover só **arquivos** de um Application que continua existindo é diferente — aí o `prune: true` resolve sozinho.
+
+Mesmo com prune, sobra o Secret TLS de um Ingress removido: o cert-manager apaga o `Certificate`, mas não o Secret que ele gerou. Inofensivo; apague se nenhum Ingress referenciar mais o `secretName`.
+
+---
+
+## Rewrite da Vercel tomando `403 Just a moment...`
+
+**Sintoma.** O frontend na Vercel carrega, mas toda chamada a `/api/*` volta `403` com HTML da página de desafio da Cloudflare. O mesmo `curl` feito da sua máquina direto no gateway responde `200`.
+
+**Causa.** O rewrite é executado pelos servidores da Vercel, e o **Bot Fight Mode** da zona do gateway desafia tráfego automatizado vindo de datacenter. Do navegador passa (o desafio é JavaScript); de servidor, nunca.
+
+**Correção.** Desligar o Bot Fight Mode na zona `<infra_domain>` (`PUT /zones/{id}/bot_management` com `fight_mode: false`). No plano Free não existe regra de skip do WAF que o contorne. Leva alguns segundos para propagar — o primeiro teste logo depois ainda pode voltar `403`.
+
+---
+
+## Projeto da Vercel com `framework: null`
+
+**Sintoma.** Projeto criado pela API (ou pelo MCP) com *Root Directory* de monorepo builda `READY`, mas o preset aparece como nenhum.
+
+**Causa.** A detecção de framework não roda na criação pela API com root directory. Sem preset, a Vercel não sabe que a saída do Vite é `dist/` e pode publicar a pasta errada — e o build continua verde.
+
+**Correção.** Definir o *Framework Preset* (`update_project` com `framework: "vite"`) e conferir o que a URL serve (`curl` procurando `/assets/index-*.js`), não o status do build.
+
+---
+
 ## Padrões que se repetem
 
 Olhando o conjunto, quatro categorias explicam quase tudo:

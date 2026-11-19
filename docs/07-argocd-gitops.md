@@ -58,7 +58,8 @@ Applications atuais:
 
 | Application | Fonte | Destino |
 | --- | --- | --- |
-| `my-portfolio` | Git, `apps/my-portfolio` (Kustomize) | ns `my-portfolio` |
+| `schedule-visits` | Git, `apps/schedule-visits` (Kustomize) | ns `schedule-visits` |
+| `study` | Git, `apps/study` (Kustomize) | ns `study` |
 | `postgres` | Git, `data-services/postgres` | ns `postgres` |
 | `valkey` | Chart Helm `valkey` 0.12.0 | ns `valkey` |
 | `rustfs` | Chart Helm `rustfs` 1.0.0-rc.5 | ns `rustfs` |

@@ -66,6 +66,40 @@ O role `argocd` corrige isso:
 
 Com `Local`, o kube-proxy não mascara a origem e o IP real chega ao Traefik. Num cluster de node único não há custo — o trade-off normal dessa flag (perder balanceamento entre nodes) só aparece com múltiplos nodes.
 
+## Gateway de APIs (`api.<infra_domain>`)
+
+Todo backend público dos projetos sai pelo mesmo host, separado por prefixo de path: `api.<infra_domain>/<projeto>/<path>`. Cada projeto acrescenta só um Ingress no seu namespace; DNS e certificado não mudam.
+
+**Um certificado só, na plataforma.** `platform/traefik/api-gateway.yaml.j2` cria o `Certificate` `api-gateway` em `kube-system` e um `TLSStore` chamado `default` que o usa. O Traefik serve o certificado do `TLSStore` default para qualquer Ingress com bloco `tls` **sem** `secretName`. Se cada Ingress do gateway pedisse o próprio certificado, o cert-manager emitiria o mesmo hostname uma vez por projeto e esbarraria no limite de 5 certificados por semana para o mesmo conjunto de nomes (ver [rate limits](#rate-limits-do-lets-encrypt)). Ingress com secret próprio (Grafana, ArgoCD) continuam casando por SNI e não são afetados.
+
+**O Ingress de um projeto** não tem annotation do cert-manager nem `secretName`, e encadeia três middlewares — o rate limit primeiro, para valer em qualquer path:
+
+```yaml
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "kube-system-public-rate-limit@kubernetescrd,<ns>-api-strip-prefix@kubernetescrd,<ns>-api-add-prefix@kubernetescrd"
+spec:
+  tls:
+    - hosts:
+        - api.<infra_domain>        # sem secretName: usa o TLSStore default
+  rules:
+    - host: api.<infra_domain>
+      http:
+        paths:
+          - path: /<projeto>
+            pathType: Prefix
+```
+
+`api-strip-prefix` remove `/<projeto>` e `api-add-prefix` devolve o prefixo que a aplicação espera (no `schedule-visits`, `/api`). Assim a URL pública fica `api.<infra_domain>/schedule-visits/v1/vehicles` e a aplicação continua recebendo `/api/v1/vehicles`, sem mudar código. A lista de middlewares vai numa linha só, sem espaços depois das vírgulas.
+
+Verificação:
+
+```bash
+kubectl get certificate api-gateway -n kube-system       # READY=True
+curl -s -o /dev/null -w "%{http_code}\n" https://api.<infra_domain>/<projeto>/<rota>   # 200
+curl -s -o /dev/null -w "%{http_code}\n" https://api.<infra_domain>/nada                # 404 do Traefik
+```
+
 ## O middleware tailnet-only
 
 ```yaml
@@ -94,7 +128,7 @@ Quem usa hoje:
 | --- | --- | --- |
 | `argocd-server` | `argocd.<infra_domain>` | Tailnet-only |
 | `rustfs` | `s3.<infra_domain>` | Tailnet-only |
-| `my-portfolio` | `<apps_domain>` | Público, sem middleware |
+| `schedule-visits-api` | `api.<infra_domain>/schedule-visits` | Público, `public-rate-limit` + reescrita de path |
 
 ### Duas camadas, não uma
 
@@ -169,7 +203,7 @@ Certificados ativos:
 | Namespace | Certificate | Host |
 | --- | --- | --- |
 | `argocd` | `argocd-server-tls` | `argocd.<infra_domain>` |
-| `my-portfolio` | `my-portfolio-tls` | `<apps_domain>` |
+| `kube-system` | `api-gateway` (secret `api-gateway-tls`) | `api.<infra_domain>` |
 | `rustfs` | `rustfs-tls` | `s3.<infra_domain>` |
 
 ## Rate limits do Let's Encrypt

@@ -18,7 +18,8 @@ Quatro camadas, separadas por **frequência de mudança** — é isso que define
 | Provisionamento (hardening, Tailscale, k3s) | Ansible, roda 1× por servidor | `ansible/` |
 | Plataforma (cert-manager, Sealed Secrets, ArgoCD, KEDA, operadores) | Ansible + Helm | `ansible/roles/`, `platform/` |
 | Serviços de dados (Postgres, Valkey, RustFS) | ArgoCD | `data-services/` |
-| Projetos (imagem construída pelo CI) | ArgoCD | `apps/` |
+| Backends dos projetos (imagem construída pelo CI), atrás do gateway `api.<infra_domain>/<projeto>` | ArgoCD | `apps/` |
+| Frontends dos projetos | Vercel, deploy só por tag `v*` na `main` | fora do cluster |
 
 O ArgoCD **não** gerencia as duas primeiras camadas: ele depende do cert-manager (certificado próprio) e do repositório Git para funcionar. Componente do qual o ArgoCD depende não pode depender do ArgoCD para existir.
 

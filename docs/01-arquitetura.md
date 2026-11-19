@@ -22,8 +22,8 @@ A infra é dividida em quatro camadas, e a linha que as separa é **com que freq
 ┌─ 3. Serviços de dados (ArgoCD) ─────── muda de vez em quando ─────┐
 │  Postgres · Valkey · RustFS                                       │
 └───────────────────────────────────────────────────────────────────┘
-┌─ 4. Projetos (ArgoCD) ──────────────── muda a cada push ──────────┐
-│  my-portfolio · (próximos projetos)                               │
+┌─ 4. Backends dos projetos (ArgoCD) ──── muda a cada tag ──────────┐
+│  schedule-visits (API) · study  — frontends ficam na Vercel       │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
