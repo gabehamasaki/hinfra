@@ -13,7 +13,7 @@ A pergunta que decide é **quem precisa ler o segredo e quando**.
 
 | Quem lê | Mecanismo | Onde vive |
 | --- | --- | --- |
-| O Ansible, antes de o cluster existir | **ansible-vault** | `ansible/group_vars/all/vault.yml`, criptografado, commitado |
+| O Ansible, antes de o cluster existir | **ansible-vault** | Valores no 1Password (cofre `Infra`); `vault.yml` gerado deles, criptografado, **só local, nunca commitado** |
 | Só o cluster | **Secret criado pelo Ansible** | Direto no cluster; nunca passa pelo Git |
 | O ArgoCD, a partir do Git | **Sealed Secrets** | Criptografado no repositório |
 | Um humano, numa crise | **1Password** | Fora daqui — ver abaixo |
@@ -24,33 +24,20 @@ O Sealed Secrets existe para o caso que os outros não cobrem: um segredo que pr
 
 ## ansible-vault
 
-O arquivo criptografado **é commitado** — esse é o objetivo. Um clone novo já vem com todos os segredos, e só precisa da senha.
+O `vault.yml` **nunca vai para o Git** (invariante do `CLAUDE.md`; o repositório é público). Os valores vivem no item `hinfra ansible vault` do cofre `Infra` no 1Password, e o repositório guarda só o template com referências, `ansible/group_vars/all/vault.yml.tpl`. Gerar:
 
 ```bash
-ansible-vault edit ansible/group_vars/all/vault.yml
+cd ansible
+cat group_vars/all/vault.yml.tpl | op inject | ansible-vault encrypt - --output group_vars/all/vault.yml
 ```
 
-Se precisar abrir temporariamente (para acrescentar várias entradas de uma vez, por exemplo), o ciclo tem três passos e **nenhum pode ser pulado**:
+**Quem roda é o usuário, no terminal dele.** O `op inject` resolve todas as referências de uma vez, e o plugin `op-secrets` bloqueia isso dentro do agente — de propósito. Não procure caminho alternativo: peça para o usuário rodar.
 
-```bash
-script -qec "ansible-vault decrypt ansible/group_vars/all/vault.yml --vault-password-file ~/.infra-vault-pass" /dev/null
-# ... editar ...
-script -qec "ansible-vault encrypt ansible/group_vars/all/vault.yml --vault-password-file ~/.infra-vault-pass" /dev/null
-git add -f ansible/group_vars/all/vault.yml
-```
+Mudar um valor = editar o campo no 1Password e gerar de novo. `ansible-vault edit` direto deixa o 1Password para trás e a próxima geração desfaz a mudança. Variável nova: campo no item + linha no `vault.yml.tpl` + valor fictício no `vault.yml.example`.
 
-O `git add -f` é necessário porque o `.gitignore` bloqueia esse caminho de propósito, para impedir commit acidental da versão em texto puro. O `-f` é o gesto consciente de que agora está criptografado.
+Conferir sem ver valores: os roles `data_services_secrets` e `observability_secrets` em `--check` precisam dar `changed=0`.
 
-**Confirme antes de commitar** — este é o erro caro e irreversível:
-
-```bash
-head -1 ansible/group_vars/all/vault.yml     # tem que ser $ANSIBLE_VAULT;1.1;AES256
-git show :ansible/group_vars/all/vault.yml | head -1   # o que está de fato staged
-```
-
-Também acrescente a variável em `vault.yml.example`, com valor fictício, para que o modelo continue completo.
-
-A senha do vault fica em `~/.infra-vault-pass`, referenciada pelo `ansible.cfg`, fora do repositório.
+A senha do vault fica em `~/.infra-vault-pass`, referenciada pelo `ansible.cfg`, fora do repositório, com cópia no 1Password.
 
 ## Secret criado pelo Ansible
 
@@ -110,7 +97,7 @@ Dados de **backup** (dumps do k3s) são outra classe e vão para o R2 — automa
 ## Rotacionar
 
 ```bash
-ansible-vault edit ansible/group_vars/all/vault.yml
+# trocar o campo no 1Password e gerar o vault.yml de novo (ver acima)
 cd ansible && script -qec "ansible-playbook -i inventory/hosts.ini site.yml --private-key ../.secrets/vps-1_deploy_ed25519" /dev/null
 kubectl rollout restart deployment/<nome> -n <ns>
 ```

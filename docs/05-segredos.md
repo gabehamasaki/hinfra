@@ -4,7 +4,7 @@ Três mecanismos, cada um com um papel distinto. A regra que vale para todos: **
 
 | Mecanismo | Para quê | Onde vive |
 | --- | --- | --- |
-| **ansible-vault** | Segredos de provisionamento — o Ansible precisa deles antes do cluster existir | `ansible/group_vars/all/vault.yml`, **somente local** (não commitado) |
+| **ansible-vault** | Segredos de provisionamento — o Ansible precisa deles antes do cluster existir | Valores no **1Password** (cofre `Infra`); `ansible/group_vars/all/vault.yml` é gerado deles, **somente local** (não commitado) |
 | **Secrets criados pelo Ansible** | Credenciais que só o cluster consome | Direto no cluster, nunca passam pelo Git |
 | **Sealed Secrets** | Segredos de projeto que precisam viver no Git, para o ArgoCD aplicar | Criptografados no repositório |
 
@@ -24,22 +24,27 @@ vault_r2_access_key_id              # backup offsite no R2
 vault_r2_secret_access_key
 ```
 
-O `vault.yml` **não** entra no Git (repositório público). Copie de `vault.yml.example`, preencha e criptografe na sua máquina:
+O `vault.yml` **não** entra no Git (repositório público). A fonte de verdade dos valores é o item `hinfra ansible vault` do cofre `Infra` no 1Password, um campo por variável. O repositório guarda só o **template** com as referências, [`vault.yml.tpl`](../ansible/group_vars/all/vault.yml.tpl), e o arquivo é gerado a partir dele — o texto puro passa pelo pipe e nunca é gravado no disco:
 
 ```bash
-cp ansible/group_vars/all/vault.yml.example ansible/group_vars/all/vault.yml
-ansible-vault encrypt ansible/group_vars/all/vault.yml
+cd ansible
+cat group_vars/all/vault.yml.tpl | op inject | ansible-vault encrypt - --output group_vars/all/vault.yml
+head -1 group_vars/all/vault.yml     # $ANSIBLE_VAULT;1.1;AES256
 ```
 
-```bash
-ansible-vault edit ansible/group_vars/all/vault.yml       # editar
-```
+Rode isso no seu terminal, não dentro de um agente: o `op inject` resolve todas as referências de uma vez (o plugin `op-secrets` do Claude Code o bloqueia de propósito). No fish, use `cat … |` como acima — o `op` no WSL é o `op.exe` do Windows, e ele não entende caminho Linux passado como argumento.
+
+Para mudar um valor: edite o campo no 1Password e gere o `vault.yml` de novo. Editar o `vault.yml` direto (`ansible-vault edit`) faz o 1Password ficar para trás, e a próxima geração desfaz a mudança. Variável nova entra nos três lugares: campo no item, linha no `vault.yml.tpl` e valor fictício no `vault.yml.example`.
+
+Ficam **fora** do template, de propósito: `vault_tailscale_authkey` (não fica guardada depois do uso — gere uma nova no admin do Tailscale antes de provisionar servidor novo e adicione ao item) e as opcionais `vault_alertmanager_critical_webhook_url`, `vault_k3s_backup_healthcheck_url` e `vault_hinfra_repo_token`.
+
+Para conferir que o `vault.yml` bate com o que está aplicado, rode os roles que só criam Secrets em `--check`: `changed=0` significa idêntico.
 
 ### A senha do vault
 
 Fica em `~/.infra-vault-pass`, **fora do repositório**, referenciada pelo `ansible.cfg`.
 
-> Essa senha é a chave de tudo. Sem ela, o `vault.yml` commitado é inútil em qualquer outra máquina — e com ela, todos os tokens acima ficam acessíveis. Guarde uma cópia num gerenciador de senhas.
+> Essa senha é a chave do `vault.yml` local. A cópia fica no 1Password (item `hinfra vault password`, cofre `Infra`). Numa máquina nova: recrie `~/.infra-vault-pass` a partir dela e gere o `vault.yml` pelo template.
 
 ## Secrets criados diretamente pelo Ansible
 
@@ -127,13 +132,20 @@ O backup atual está em `.secrets/backup-sealed-secrets-key.yaml` — em texto p
 
 Tudo que está em `.secrets/` está coberto pelo `.gitignore`.
 
-## As três credenciais de recuperação
+## Credenciais de recuperação
 
-Três arquivos vivem hoje apenas no disco da máquina local, em texto puro. Nenhum está no Git, mas **perder a máquina significa perder o acesso**:
+Arquivos que vivem no disco da máquina local, em texto puro, fora do Git. Perder a máquina sem cópia significa perder o acesso — por isso cada um tem cópia no cofre `Infra` do 1Password:
 
-1. `~/.infra-vault-pass` — sem ela, nenhum segredo do repositório abre
-2. `.secrets/backup-sealed-secrets-key.yaml` — sem ela, um cluster novo não decifra os SealedSecrets
-3. `.secrets/argocd-admin-password.txt` — recuperável recriando a senha, mas incômodo
+| Arquivo local | Item no 1Password |
+| --- | --- |
+| `~/.infra-vault-pass` | `hinfra vault password` |
+| `.secrets/backup-sealed-secrets-key.yaml` | `hinfra sealed-secrets master key` (documento) |
+| `.secrets/vps-1_deploy_ed25519` e `.pub` | `hinfra deploy ssh key (private)` / `(public)` (documentos) |
+| `.secrets/argocd-admin-password.txt` | `hinfra argocd admin` |
+| `.secrets/grafana-admin-password.txt` | `hinfra grafana admin` |
+| `.secrets/schedule-visits-db.password` | `schedule-visits db` |
+
+Ao trocar qualquer um desses arquivos, atualize o item. O kubeconfig fica de fora: o `site.yml` o baixa de novo a cada execução.
 
 O destino é o **1Password**. A propriedade que define isso é única: precisam estar acessíveis quando *tanto o notebook quanto a VPS* sumiram — o que exclui qualquer lugar que esteja dentro de um dos dois.
 
@@ -164,7 +176,8 @@ A distinção que explica por que backups vão para o R2 e credenciais vão para
 ## Rotacionar um segredo
 
 ```bash
-ansible-vault edit ansible/group_vars/all/vault.yml         # trocar o valor
+# 1. trocar o valor do campo no item "hinfra ansible vault" (1Password)
+# 2. gerar o vault.yml de novo (ver "ansible-vault" acima)
 ansible-playbook -i inventory/hosts.ini site.yml            # reaplica os Secrets
 kubectl rollout restart deployment/<nome> -n <namespace>    # pods relêem o Secret
 ```
